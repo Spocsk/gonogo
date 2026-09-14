@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #12181f;
+  --ink-2: #1b232c;
+  --ink-3: #24303b;
+  --paper: #eadfc8;
+  --paper-dim: #b9ae97;
+  --go: #e0b25a;
+  --nogo: #c45032;
+  --signal: #6ec9c4;
+  --a: #c44536;
+  --b: #2c5d8c;
+  --c: #d4a017;
+  --d: #2d7a5c;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-go: var(--go);
+  --color-nogo: var(--nogo);
+  --color-signal: var(--signal);
+  --color-a: var(--a);
+  --color-b: var(--b);
+  --color-c: var(--c);
+  --color-d: var(--d);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-stencil);
+  --font-mono: var(--font-data);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100%;
+  overflow-x: hidden;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(180deg, rgb(18 24 31 / 0.2), rgb(18 24 31 / 0.85)),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 47px,
+      rgb(234 223 200 / 0.04) 47px,
+      rgb(234 223 200 / 0.04) 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 47px,
+      rgb(234 223 200 / 0.04) 47px,
+      rgb(234 223 200 / 0.04) 48px
+    );
+  color: var(--paper);
+  font-family: var(--font-body), sans-serif;
+}
+
+::selection {
+  background: var(--go);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--go);
+  outline-offset: 3px;
+}
+
+input,
+button,
+a {
+  caret-color: var(--go);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-3);
+  border: 2px solid var(--ink);
+}
+
+.hud-corners {
+  position: relative;
+}
+
+.hud-corners::before,
+.hud-corners::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--paper-dim);
+  pointer-events: none;
+}
+
+.hud-corners::before {
+  top: 0;
+  left: 0;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+
+.hud-corners::after {
+  top: 0;
+  right: 0;
+  border-top: 1px solid;
+  border-right: 1px solid;
+}
+
+.hud-corners > .hud-br,
+.hud-corners > .hud-bl {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--paper-dim);
+  pointer-events: none;
+}
+
+.hud-corners > .hud-bl {
+  bottom: 0;
+  left: 0;
+  border-bottom: 1px solid;
+  border-left: 1px solid;
+}
+
+.hud-corners > .hud-br {
+  right: 0;
+  bottom: 0;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
