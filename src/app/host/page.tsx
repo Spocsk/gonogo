@@ -1,8 +1,9 @@
 "use client"
 
 import { QRCodeSVG } from "qrcode.react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Frame, formatPin } from "@/components/frame"
 import { Leaderboard, Podium } from "@/components/leaderboard"
 import { PADS, Shape } from "@/components/shapes"
@@ -12,8 +13,14 @@ import type { PublicGame } from "@/lib/types"
 const HOST_PIN = "gonogo.hostPin"
 const HOST_TOKEN = "gonogo.hostToken"
 
+type AuthGate = "checking" | "locked" | "open"
+
 export default function HostPage() {
   const router = useRouter()
+  const [auth, setAuth] = useState<AuthGate>("checking")
+  const [password, setPassword] = useState("")
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [loginPending, setLoginPending] = useState(false)
   const [pin, setPin] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
@@ -21,16 +28,64 @@ export default function HostPage() {
   const [origin, setOrigin] = useState("")
   const [leaving, setLeaving] = useState(false)
 
-  const url = pin && token ? `/api/games/${pin}?token=${encodeURIComponent(token)}` : null
+  const url =
+    auth === "open" && pin && token
+      ? `/api/games/${pin}?token=${encodeURIComponent(token)}`
+      : null
   const { game, error, setGame } = useGame(url)
   const joinUrl = origin && pin ? `${origin}/?pin=${pin}` : ""
+
+  const lockConsole = useCallback(() => {
+    setAuth("locked")
+    setPin(null)
+    setToken(null)
+    setGame(null)
+    setActionError(null)
+  }, [setGame])
 
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
 
   useEffect(() => {
-    if (leaving) return
+    let cancelled = false
+    async function checkSession() {
+      try {
+        const response = await fetch("/api/host/session", { cache: "no-store" })
+        if (cancelled) return
+        if (response.ok) {
+          setAuth("open")
+          return
+        }
+        const payload = (await response.json()) as { error?: string }
+        if (response.status === 503) {
+          setLoginError(payload.error ?? "Mot de passe formateur non configuré.")
+        }
+        setAuth("locked")
+      } catch {
+        if (!cancelled) setAuth("locked")
+      }
+    }
+    void checkSession()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (auth !== "open") return
+    function onVisible() {
+      if (document.hidden) return
+      void fetch("/api/host/session", { cache: "no-store" }).then((response) => {
+        if (!response.ok) lockConsole()
+      })
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => document.removeEventListener("visibilitychange", onVisible)
+  }, [auth, lockConsole])
+
+  useEffect(() => {
+    if (leaving || auth !== "open") return
     const existingPin = localStorage.getItem(HOST_PIN)
     const existingToken = localStorage.getItem(HOST_TOKEN)
     if (existingPin && existingToken) {
@@ -38,17 +93,21 @@ export default function HostPage() {
       setToken(existingToken)
       return
     }
-    void createSession(setPin, setToken, setBootError)
-  }, [leaving])
+    void createSession(setPin, setToken, setBootError, lockConsole)
+  }, [leaving, auth, lockConsole])
 
   useEffect(() => {
-    if (leaving) return
+    if (leaving || auth !== "open") return
+    if (error?.includes("non autorisée")) {
+      const id = window.setTimeout(() => lockConsole(), 0)
+      return () => window.clearTimeout(id)
+    }
     if (error?.includes("introuvable") && pin) {
       localStorage.removeItem(HOST_PIN)
       localStorage.removeItem(HOST_TOKEN)
-      void createSession(setPin, setToken, setBootError)
+      void createSession(setPin, setToken, setBootError, lockConsole)
     }
-  }, [error, pin, leaving])
+  }, [error, pin, leaving, auth, lockConsole])
 
   const act = useCallback(
     async (action: "start" | "reveal" | "next") => {
@@ -60,14 +119,43 @@ export default function HostPage() {
         body: JSON.stringify({ hostToken: token, action }),
       })
       const payload = await response.json()
+      if (response.status === 401) {
+        lockConsole()
+        return
+      }
       if (!response.ok) {
         setActionError(payload.error ?? "Action refusée.")
         return
       }
       setGame(payload as PublicGame)
     },
-    [pin, token, setGame],
+    [pin, token, setGame, lockConsole],
   )
+
+  async function onUnlock(event: FormEvent) {
+    event.preventDefault()
+    setLoginError(null)
+    setLoginPending(true)
+    try {
+      const response = await fetch("/api/host/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      })
+      const payload = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        setLoginError(payload.error ?? "Accès refusé.")
+        return
+      }
+      setPassword("")
+      setBootError(null)
+      setAuth("open")
+    } catch {
+      setLoginError("Liaison sol indisponible.")
+    } finally {
+      setLoginPending(false)
+    }
+  }
 
   async function resetSession() {
     localStorage.removeItem(HOST_PIN)
@@ -75,7 +163,7 @@ export default function HostPage() {
     setPin(null)
     setToken(null)
     setGame(null)
-    await createSession(setPin, setToken, setBootError)
+    await createSession(setPin, setToken, setBootError, lockConsole)
   }
 
   async function abortToHome() {
@@ -105,6 +193,51 @@ export default function HostPage() {
     return (
       <main className="min-h-dvh flex items-center justify-center p-8">
         <p className="font-display text-3xl uppercase">Retour à l’accueil…</p>
+      </main>
+    )
+  }
+
+  if (auth !== "open") {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-12">
+        <Frame className="w-full max-w-md bg-ink/70 p-6 md:p-8">
+          <h1 className="font-display text-3xl uppercase tracking-wide mb-2">
+            Console formateur
+          </h1>
+          <p className="text-paper-dim mb-6">
+            Accès réservé. Entrez le mot de passe de séance.
+          </p>
+          {auth === "checking" ? (
+            <p className="font-display text-2xl uppercase">Vérification…</p>
+          ) : (
+            <form onSubmit={(event) => void onUnlock(event)} className="flex flex-col gap-5">
+              <label className="flex flex-col gap-2">
+                <span className="text-paper-dim text-sm">Mot de passe</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="bg-ink-2 text-paper font-display text-3xl tracking-wide px-4 py-3 w-full"
+                />
+              </label>
+              {loginError ? <p className="text-nogo text-base">{loginError}</p> : null}
+              <button
+                type="submit"
+                disabled={loginPending || password.length === 0}
+                className="bg-go text-ink font-display text-3xl tracking-wide uppercase py-4 disabled:opacity-50"
+              >
+                {loginPending ? "Contrôle…" : "Déverrouiller"}
+              </button>
+            </form>
+          )}
+          <p className="mt-8 text-sm text-paper-dim">
+            <Link href="/" className="text-go underline-offset-4 hover:underline">
+              Retour à l’accueil
+            </Link>
+          </p>
+        </Frame>
       </main>
     )
   }
@@ -359,10 +492,15 @@ async function createSession(
   setPin: (pin: string) => void,
   setToken: (token: string) => void,
   setError: (error: string) => void,
+  onUnauthorized: () => void,
 ) {
   try {
     const response = await fetch("/api/games", { method: "POST" })
     const payload = await response.json()
+    if (response.status === 401) {
+      onUnauthorized()
+      return
+    }
     if (!response.ok) {
       setError(payload.error ?? "Impossible d’ouvrir une session.")
       return

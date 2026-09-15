@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { nextQuestion, revealNow, startBrief, tickGame, toPublic } from "@/lib/game"
+import { hasValidHostCookie, hostUnauthorized } from "@/lib/host-auth"
 import { deleteGame, saveGame, storageKind, withGameLock } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
@@ -9,6 +10,10 @@ type Ctx = { params: Promise<{ pin: string }> }
 type Action = "start" | "reveal" | "next" | "abort"
 
 export async function POST(request: Request, ctx: Ctx) {
+  if (!hasValidHostCookie(request)) {
+    return hostUnauthorized()
+  }
+
   const { pin } = await ctx.params
   let body: { hostToken?: string; action?: Action }
   try {

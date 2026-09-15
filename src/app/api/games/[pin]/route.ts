@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { tickGame, toPublic } from "@/lib/game"
+import { hasValidHostCookie } from "@/lib/host-auth"
 import { getGame, saveGame, storageKind, withGameLock } from "@/lib/store"
 import type { Viewer } from "@/lib/types"
 
@@ -13,7 +14,8 @@ export async function GET(request: Request, ctx: Ctx) {
   const url = new URL(request.url)
   const token = url.searchParams.get("token")
   const playerId = url.searchParams.get("playerId")
-  const viewer: Viewer = token
+  const hostView = Boolean(token) && hasValidHostCookie(request)
+  const viewer: Viewer = hostView && token
     ? { role: "host", token }
     : playerId
       ? { role: "player", playerId }
