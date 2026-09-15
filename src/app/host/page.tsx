@@ -1,6 +1,7 @@
 "use client"
 
 import { QRCodeSVG } from "qrcode.react"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Frame, formatPin } from "@/components/frame"
 import { Leaderboard, Podium } from "@/components/leaderboard"
@@ -12,11 +13,13 @@ const HOST_PIN = "gonogo.hostPin"
 const HOST_TOKEN = "gonogo.hostToken"
 
 export default function HostPage() {
+  const router = useRouter()
   const [pin, setPin] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [origin, setOrigin] = useState("")
+  const [leaving, setLeaving] = useState(false)
 
   const url = pin && token ? `/api/games/${pin}?token=${encodeURIComponent(token)}` : null
   const { game, error, setGame } = useGame(url)
@@ -27,6 +30,7 @@ export default function HostPage() {
   }, [])
 
   useEffect(() => {
+    if (leaving) return
     const existingPin = localStorage.getItem(HOST_PIN)
     const existingToken = localStorage.getItem(HOST_TOKEN)
     if (existingPin && existingToken) {
@@ -35,15 +39,16 @@ export default function HostPage() {
       return
     }
     void createSession(setPin, setToken, setBootError)
-  }, [])
+  }, [leaving])
 
   useEffect(() => {
+    if (leaving) return
     if (error?.includes("introuvable") && pin) {
       localStorage.removeItem(HOST_PIN)
       localStorage.removeItem(HOST_TOKEN)
       void createSession(setPin, setToken, setBootError)
     }
-  }, [error, pin])
+  }, [error, pin, leaving])
 
   const act = useCallback(
     async (action: "start" | "reveal" | "next") => {
@@ -73,6 +78,37 @@ export default function HostPage() {
     await createSession(setPin, setToken, setBootError)
   }
 
+  async function abortToHome() {
+    setLeaving(true)
+    const currentPin = pin
+    const currentToken = token
+    localStorage.removeItem(HOST_PIN)
+    localStorage.removeItem(HOST_TOKEN)
+    setPin(null)
+    setToken(null)
+    setGame(null)
+    if (currentPin && currentToken) {
+      try {
+        await fetch(`/api/games/${currentPin}/host`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hostToken: currentToken, action: "abort" }),
+        })
+      } catch {
+        // on rentre à l'accueil même si Redis ne répond pas
+      }
+    }
+    router.push("/")
+  }
+
+  if (leaving) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center p-8">
+        <p className="font-display text-3xl uppercase">Retour à l’accueil…</p>
+      </main>
+    )
+  }
+
   if (bootError) {
     return (
       <main className="min-h-dvh flex items-center justify-center p-8">
@@ -95,18 +131,27 @@ export default function HostPage() {
         <h1 className="font-display text-4xl uppercase leading-none">
           GO/<span className="text-go">NO-GO</span>
         </h1>
-        {game.phase === "lobby" ? (
-          <p className="font-mono text-paper-dim text-sm max-w-md text-right">
-            {game.storage === "memory"
-              ? "Stockage local. Sur Vercel, ajoutez Upstash Redis pour la classe."
-              : "Sessions persistées."}{" "}
-            <button type="button" onClick={() => void resetSession()} className="text-go">
-              Nouvelle session
-            </button>
-          </p>
-        ) : (
-          <p className="font-mono tabular text-paper-dim text-sm">{formatPin(game.pin)}</p>
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+          {game.phase === "lobby" ? (
+            <p className="font-mono text-paper-dim text-sm max-w-md text-right">
+              {game.storage === "memory"
+                ? "Stockage local. Sur Vercel, ajoutez Upstash Redis pour la classe."
+                : "Sessions persistées."}{" "}
+              <button type="button" onClick={() => void resetSession()} className="text-go">
+                Nouvelle session
+              </button>
+            </p>
+          ) : (
+            <p className="font-mono tabular text-paper-dim text-sm">{formatPin(game.pin)}</p>
+          )}
+          <button
+            type="button"
+            onClick={() => void abortToHome()}
+            className="font-display text-lg uppercase tracking-wide text-paper-dim hover:text-nogo"
+          >
+            Annuler · accueil
+          </button>
+        </div>
       </header>
 
       {game.phase === "lobby" ? (

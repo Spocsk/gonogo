@@ -50,6 +50,15 @@ export async function saveGame(game: Game): Promise<void> {
   memoryMap().set(game.pin, game)
 }
 
+export async function deleteGame(pin: string): Promise<void> {
+  const redis = redisClient()
+  if (redis) {
+    await redis.del(keyFor(pin))
+    return
+  }
+  memoryMap().delete(pin)
+}
+
 export async function pinExists(pin: string): Promise<boolean> {
   return (await getGame(pin)) != null
 }
