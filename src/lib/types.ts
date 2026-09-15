@@ -1,4 +1,4 @@
-export type DayTag = "J1" | "J2" | "J3" | "J4"
+export type DayTag = "J1" | "J2" | "J3" | "J4" | "J5"
 export type Phase = "lobby" | "question" | "reveal" | "podium"
 
 export type Question = {

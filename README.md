@@ -1,6 +1,6 @@
 # GO/NO-GO
 
-Quiz live type Kahoot pour le recap React + TypeScript Bachelor 2 (jours 1 à 4). Une question, quatre réponses, sessions avec callsign.
+Quiz live type Kahoot pour le recap React + TypeScript Bachelor 2 (jours 1 à 5). Une question, quatre réponses, sessions avec callsign.
 
 ## Local
 

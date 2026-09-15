@@ -273,4 +273,109 @@ export const QUESTIONS: Question[] = [
     correctIndex: 3,
     timeLimitMs: TIME_LIMIT_MS,
   },
+  {
+    id: "j5-label",
+    day: "J5",
+    context:
+      "TP 01 — ordre de mission contrôlé. Code, objectif, véhicule, date, fenêtres : React connaît chaque valeur. Un placeholder « Objectif… » qui remplace le `<label>` disparaît dès la première lettre. Le lecteur d’écran et le Tab n’ont plus de nom de champ.",
+    prompt: "Un placeholder à la place d’un `<label htmlFor>` :",
+    choices: [
+      "Suffit pour nommer le champ (lecteur d’écran compris)",
+      "Disparaît à la saisie : le champ n’a plus de nom",
+      "Remplace `htmlFor` / `id` une fois le submit lancé",
+      "Est obligatoire dès qu’on pose `aria-invalid`",
+    ],
+    correctIndex: 1,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "j5-aria",
+    day: "J5",
+    context:
+      "TP 02 — « Erreur de formulaire » n’aide personne. Un message actionnable dit quoi faire : « Choisissez une date postérieure au 10 septembre 2026 ». La bordure rouge seule est invisible pour une partie des opérateurs. `aria-invalid` et `aria-describedby` collent le texte au champ.",
+    prompt: "Un champ en erreur, côté HTML / accessibilité :",
+    choices: [
+      "Le passer en rouge suffit",
+      "`alert()` au submit, puis on continue",
+      "`aria-invalid` + `aria-describedby` vers le message qui nomme la correction",
+      "Désactiver l’input jusqu’au prochain F5",
+    ],
+    correctIndex: 2,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "j5-submit",
+    day: "J5",
+    context:
+      "Toujours TP 02 — valider au bon moment : pas d’agression à la première lettre, blur pour le champ quitté, submit pour bloquer l’ordre. Un Submit `disabled` « pour éviter les erreurs » cache la raison. L’opérateur clique, lit le résumé, le focus va sur le premier champ fautif.",
+    prompt: "Désactiver le bouton Submit tant que le draft est invalide :",
+    choices: [
+      "Cache la raison du blocage : le laisser cliquable, résumer, focuser",
+      "Est la seule façon d’être accessible",
+      "Remplace `aria-invalid`",
+      "Évite d’écrire `validateMissionDraft`",
+    ],
+    correctIndex: 0,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "j5-effect",
+    day: "J5",
+    context:
+      "TP 00 — recap fiche `/fleet/:vehicleId`. `useEffect` synchronise avec `/api/vehicles.json`, pas avec un calcul de liste. Cleanup : `AbortController`. Deps : `[vehicleId]`. Hydrater les missions dans `OperationsProvider` (TP 04), c’est le même geste : l’effet vit dans le Provider, jamais dans le reducer.",
+    prompt: "`fetch` des missions / du JSON véhicule : où ça vit ?",
+    choices: [
+      "Dans `operationsReducer`, à côté de `mission/started`",
+      "Dans un `useEffect` (page ou Provider), puis un `dispatch` éventuel",
+      "Dans `validateMissionDraft`, au submit",
+      "Nulle part : `as Vehicle[]` charge déjà le réseau",
+    ],
+    correctIndex: 1,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "j5-reducer",
+    day: "J5",
+    context:
+      "TP 03 — `operationsReducer(state, action) → nextState`. Même entrée, même sortie. Pas de `fetch`, pas de `Date.now()` caché, pas de `state.missions.push`. Les actions racontent un verbe métier (`mission/started`), pas « mets phase à X ». `assertNever` ferme le `switch`.",
+    prompt: "Un reducer de mission est correct s’il :",
+    choices: [
+      "Mute `state.history` puis le retourne",
+      "Lance le POST abort lui-même",
+      "Appelle `Date.now()` pour dater sans que l’UI le sache",
+      "Reste pur : pas d’I/O, copies immuables, `assertNever` au `default`",
+    ],
+    correctIndex: 3,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "j5-illegal",
+    day: "J5",
+    context:
+      "Graphe du jour : `planned → in-flight → completed`, hold/resume, abort. `completed → in-flight` n’existe pas. Un `throw` métier crashe la console. L’opérateur doit voir le refus : state inchangé, entrée `rejected` dans l’historique.",
+    prompt: "`completed` + `mission/started` : le reducer doit :",
+    choices: [
+      "Passer quand même en `in-flight`",
+      "Garder l’état, historiser `rejected`, sans `throw`",
+      "`throw new Error` pour arrêter React",
+      "Ignorer l’action sans aucune trace",
+    ],
+    correctIndex: 1,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "j5-context",
+    day: "J5",
+    context:
+      "TP 04 — le reducer raconte, il ne voyage pas. Missions, Contrôle et Alertes ont besoin du même state sans le faire transiter par `AppLayout`. Context transporte une valeur déjà calculée. `useOperations` throw hors Provider : un `null` « pour plus tard » cache l’oubli.",
+    prompt: "Context, par rapport au reducer :",
+    choices: [
+      "Remplace `useReducer` : plus besoin d’actions",
+      "Crée l’état à chaque `useContext`",
+      "Transporte state + `dispatch` ; le reducer décide encore des transitions",
+      "Doit envelopper le thème, même si Contrôle n’en a pas besoin",
+    ],
+    correctIndex: 2,
+    timeLimitMs: TIME_LIMIT_MS,
+  },
 ]
