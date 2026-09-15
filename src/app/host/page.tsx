@@ -124,6 +124,13 @@ export default function HostPage() {
           <h2 className="font-display text-6xl uppercase">Classement final</h2>
           <Podium players={game.players} />
           <Leaderboard players={game.players} />
+          <button
+            type="button"
+            onClick={() => void resetSession()}
+            className="self-start bg-go text-ink font-display text-3xl uppercase tracking-wide px-8 py-4"
+          >
+            Nouvelle partie
+          </button>
         </section>
       ) : null}
 

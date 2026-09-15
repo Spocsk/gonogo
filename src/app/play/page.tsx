@@ -103,6 +103,17 @@ export default function PlayPage() {
           {game.you?.nickname} · {game.you?.score ?? 0} pts · place {rank || "—"}
         </p>
         <Podium players={game.players} />
+        <Link
+          href="/"
+          onClick={() => {
+            localStorage.removeItem("gonogo.pin")
+            localStorage.removeItem("gonogo.playerId")
+            localStorage.removeItem("gonogo.nickname")
+          }}
+          className="self-start bg-go text-ink font-display text-2xl uppercase tracking-wide px-6 py-3"
+        >
+          Nouvelle partie
+        </Link>
       </main>
     )
   }
