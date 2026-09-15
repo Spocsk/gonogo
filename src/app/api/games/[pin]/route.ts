@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { tickGame, toPublic } from "@/lib/game"
-import { saveGame, storageKind, withGameLock } from "@/lib/store"
+import { getGame, saveGame, storageKind, withGameLock } from "@/lib/store"
 import type { Viewer } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
+export const preferredRegion = "fra1"
 
 type Ctx = { params: Promise<{ pin: string }> }
 
@@ -18,15 +19,19 @@ export async function GET(request: Request, ctx: Ctx) {
       ? { role: "player", playerId }
       : { role: "guest" }
 
-  const result = await withGameLock(pin, async (game) => {
-    if (!game) return null
-    const live = tickGame(game)
-    if (live !== game) await saveGame(live)
-    return toPublic(live, viewer, storageKind())
-  })
-
-  if (!result) {
+  const game = await getGame(pin)
+  if (!game) {
     return NextResponse.json({ error: "Lien sol introuvable." }, { status: 404 })
   }
-  return NextResponse.json(result)
+
+  const live = tickGame(game)
+  if (live !== game && viewer.role === "host") {
+    await withGameLock(pin, async (current) => {
+      if (!current) return
+      const ticked = tickGame(current)
+      if (ticked !== current) await saveGame(ticked)
+    })
+  }
+
+  return NextResponse.json(toPublic(live, viewer, storageKind()))
 }

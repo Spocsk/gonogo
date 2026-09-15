@@ -26,13 +26,12 @@ export default function PlayPage() {
 
   const pick = useCallback(
     async (choiceIndex: number) => {
-      if (!pin || !playerId || !game || game.phase !== "question" || game.you?.answered) {
-        return
-      }
+      if (!pin || !playerId || !game || game.phase !== "question") return
+      const nextChoice = game.yourChoiceIndex === choiceIndex ? null : choiceIndex
       const response = await fetch(`/api/games/${pin}/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, choiceIndex }),
+        body: JSON.stringify({ playerId, choiceIndex: nextChoice }),
       })
       const payload = await response.json()
       if (response.ok) setGame(payload as PublicGame)
@@ -131,7 +130,8 @@ function PlayQuestion({
   const remaining = useRemaining(game)
   const seconds = Math.ceil(remaining / 1000)
   const question = game.question
-  const locked = Boolean(game.you?.answered) || game.phase === "reveal"
+  const timedOut = remaining <= 0
+  const locked = game.phase === "reveal" || timedOut
 
   if (!question) return null
 
@@ -145,7 +145,10 @@ function PlayQuestion({
           {String(Math.max(0, seconds)).padStart(2, "0")}
         </p>
       </header>
-      <p className="px-4 pb-3 text-base leading-snug text-paper">{question.prompt}</p>
+      <div className="px-4 pb-3 flex flex-col gap-2">
+        <p className="text-sm leading-snug text-paper-dim">{question.context}</p>
+        <p className="text-base leading-snug text-paper font-semibold">{question.prompt}</p>
+      </div>
       <div className="grid grid-cols-2 grid-rows-2 flex-1 gap-2 p-2">
         {question.choices.map((choice, index) => {
           const selected = game.yourChoiceIndex === index
@@ -185,8 +188,12 @@ function PlayQuestion({
               ? "NO-GO"
               : "Sans réponse"}
         </p>
+      ) : timedOut ? (
+        <p className="px-4 py-4 pb-10 text-center text-paper-dim">Temps écoulé.</p>
       ) : game.you?.answered ? (
-        <p className="px-4 py-4 pb-10 text-paper-dim">Réponse transmise au sol.</p>
+        <p className="px-4 py-4 pb-10 text-center text-paper-dim">
+          Réponse transmise. Retoucher le pad pour annuler.
+        </p>
       ) : null}
     </main>
   )

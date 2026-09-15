@@ -4,6 +4,7 @@ export type Phase = "lobby" | "question" | "reveal" | "podium"
 export type Question = {
   id: string
   day: DayTag
+  context: string
   prompt: string
   choices: [string, string, string, string]
   correctIndex: 0 | 1 | 2 | 3
@@ -43,6 +44,7 @@ export type PublicChoice = {
 export type PublicQuestion = {
   id: string
   day: DayTag
+  context: string
   prompt: string
   choices: PublicChoice[]
   timeLimitMs: number

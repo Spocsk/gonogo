@@ -3,6 +3,7 @@ import { createGame, createPin } from "@/lib/game"
 import { pinExists, saveGame, storageKind } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
+export const preferredRegion = "fra1"
 
 export async function POST() {
   let pin = createPin()

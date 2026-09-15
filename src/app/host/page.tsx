@@ -1,7 +1,7 @@
 "use client"
 
 import { QRCodeSVG } from "qrcode.react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Frame, formatPin } from "@/components/frame"
 import { Leaderboard, Podium } from "@/components/leaderboard"
 import { PADS, Shape } from "@/components/shapes"
@@ -205,6 +205,17 @@ function QuestionStage({
   const remaining = useRemaining(game)
   const seconds = Math.ceil(remaining / 1000)
   const last = game.questionIndex + 1 >= game.questionCount
+  const revealSent = useRef(false)
+
+  useEffect(() => {
+    revealSent.current = false
+  }, [game.questionIndex])
+
+  useEffect(() => {
+    if (game.phase !== "question" || remaining > 0 || revealSent.current) return
+    revealSent.current = true
+    onReveal()
+  }, [game.phase, remaining, onReveal])
 
   if (!question) return null
 
@@ -222,7 +233,8 @@ function QuestionStage({
           {String(Math.max(0, seconds)).padStart(2, "0")}
         </p>
       </div>
-      <h2 className="font-display text-[clamp(1.8rem,4.2vw,3.6rem)] leading-[1.12] tracking-wide">
+      <p className="max-w-5xl text-lg leading-relaxed text-paper-dim">{question.context}</p>
+      <h2 className="font-display text-[clamp(1.8rem,4.2vw,3.4rem)] leading-[1.12] tracking-wide">
         {question.prompt}
       </h2>
       <ol className="grid gap-3 md:grid-cols-2">

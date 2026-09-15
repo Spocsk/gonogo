@@ -3,6 +3,7 @@ import { nextQuestion, revealNow, startBrief, tickGame, toPublic } from "@/lib/g
 import { saveGame, storageKind, withGameLock } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
+export const preferredRegion = "fra1"
 
 type Ctx = { params: Promise<{ pin: string }> }
 type Action = "start" | "reveal" | "next"

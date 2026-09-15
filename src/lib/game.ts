@@ -79,7 +79,7 @@ export function startBrief(game: Game): Game {
 export function answerQuestion(
   game: Game,
   playerId: string,
-  choiceIndex: number,
+  choiceIndex: number | null,
   now = Date.now(),
 ): Game {
   const live = tickGame(game, now)
@@ -88,22 +88,33 @@ export function answerQuestion(
   }
   const question = currentQuestion(live)
   if (!question) throw new Error("Question introuvable.")
-  if (choiceIndex < 0 || choiceIndex > 3) {
+  if (choiceIndex != null && (choiceIndex < 0 || choiceIndex > 3)) {
     throw new Error("Choix invalide.")
   }
   const player = live.players.find((p) => p.id === playerId)
   if (!player) throw new Error("Opérateur inconnu.")
-  if (player.answers[question.id]) {
-    throw new Error("Réponse déjà transmise.")
+
+  const previous = player.answers[question.id]
+  const rest = { ...player.answers }
+  if (previous) delete rest[question.id]
+  let score = player.score - (previous?.points ?? 0)
+
+  if (choiceIndex == null || previous?.choiceIndex === choiceIndex) {
+    const nextPlayer: Player = { ...player, score, answers: rest }
+    return {
+      ...live,
+      players: live.players.map((p) => (p.id === playerId ? nextPlayer : p)),
+    }
   }
+
   const elapsed = now - (live.questionStartedAt ?? now)
   const correct = choiceIndex === question.correctIndex
   const points = scoreAnswer(correct, elapsed, question.timeLimitMs)
   const nextPlayer: Player = {
     ...player,
-    score: player.score + points,
+    score: score + points,
     answers: {
-      ...player.answers,
+      ...rest,
       [question.id]: { choiceIndex, at: now, correct, points },
     },
   }
@@ -144,7 +155,7 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
     live.phase === "question" || live.phase === "reveal" ? liveQuestion : null
   const isHost = viewer.role === "host" && viewer.token === live.hostToken
   const youId = viewer.role === "player" ? viewer.playerId : null
-  const showCorrect = live.phase === "reveal" || live.phase === "podium" || isHost
+  const showCorrect = live.phase === "reveal" || live.phase === "podium"
   const counts = [0, 0, 0, 0]
   if (question) {
     for (const player of live.players) {
@@ -186,6 +197,7 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
       ? {
           id: question.id,
           day: question.day,
+          context: question.context,
           prompt: question.prompt,
           choices: question.choices.map((text, index) => ({
             text,

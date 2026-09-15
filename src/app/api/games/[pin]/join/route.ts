@@ -3,6 +3,7 @@ import { joinPlayer, tickGame, toPublic } from "@/lib/game"
 import { saveGame, storageKind, withGameLock } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
+export const preferredRegion = "fra1"
 
 type Ctx = { params: Promise<{ pin: string }> }
 
