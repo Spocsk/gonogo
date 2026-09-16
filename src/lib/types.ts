@@ -12,6 +12,21 @@ export type Question = {
   timeLimitMs: number
 }
 
+export type Quiz = {
+  id: string
+  title: string
+  subtitle: string
+  questions: Question[]
+}
+
+export type QuizSummary = {
+  id: string
+  title: string
+  subtitle: string
+  questionCount: number
+  days: DayTag[]
+}
+
 export type PlayerAnswer = {
   choiceIndex: number
   at: number
@@ -35,6 +50,7 @@ export type Game = {
   questionIndex: number
   questionStartedAt: number | null
   players: Player[]
+  quizId?: string | null
 }
 
 export type PublicChoice = {
@@ -76,6 +92,8 @@ export type PublicGame = {
   yourChoiceIndex: number | null
   answeredCount: number
   storage: "memory" | "redis"
+  quizId: string | null
+  quizTitle: string | null
 }
 
 export type Viewer =

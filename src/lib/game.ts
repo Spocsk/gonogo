@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "crypto"
-import { QUESTIONS } from "./questions"
+import { DEFAULT_QUIZ_ID, getQuiz } from "./quiz-catalog"
 import { remainingMs, scoreAnswer } from "./scoring"
-import type { Game, Player, Viewer, PublicGame, PublicPlayer } from "./types"
+import type { Game, Player, Question, Viewer, PublicGame, PublicPlayer } from "./types"
 
 export function createPin(): string {
   const n = randomBytes(3).readUIntBE(0, 3) % 1_000_000
@@ -17,7 +17,19 @@ export function createGame(pin: string): Game {
     questionIndex: 0,
     questionStartedAt: null,
     players: [],
+    quizId: null,
   }
+}
+
+export function quizIdOf(game: Game): string | null {
+  if (game.quizId === undefined) return DEFAULT_QUIZ_ID
+  return game.quizId
+}
+
+export function questionsFor(game: Game): Question[] {
+  const id = quizIdOf(game)
+  if (!id) return []
+  return getQuiz(id)?.questions ?? []
 }
 
 export function normalizeNickname(raw: string): string {
@@ -29,7 +41,7 @@ export function nicknameOk(name: string): boolean {
 }
 
 export function currentQuestion(game: Game) {
-  return QUESTIONS[game.questionIndex] ?? null
+  return questionsFor(game)[game.questionIndex] ?? null
 }
 
 export function tickGame(game: Game, now = Date.now()): Game {
@@ -66,10 +78,20 @@ export function joinPlayer(game: Game, nickname: string): { game: Game; player: 
   return { game: { ...game, players: [...game.players, player] }, player }
 }
 
+export function selectQuiz(game: Game, quizId: string): Game {
+  if (game.phase !== "lobby") throw new Error("Le brief a déjà commencé.")
+  if (!getQuiz(quizId)) throw new Error("Brief introuvable.")
+  return { ...game, quizId }
+}
+
 export function startBrief(game: Game): Game {
   if (game.phase !== "lobby") throw new Error("Le brief a déjà commencé.")
+  const quizId = quizIdOf(game)
+  if (!quizId) throw new Error("Choisissez un brief avant le GO.")
+  if (!getQuiz(quizId)) throw new Error("Brief introuvable.")
   return {
     ...game,
+    quizId,
     phase: "question",
     questionIndex: 0,
     questionStartedAt: Date.now(),
@@ -97,7 +119,7 @@ export function answerQuestion(
   const previous = player.answers[question.id]
   const rest = { ...player.answers }
   if (previous) delete rest[question.id]
-  let score = player.score - (previous?.points ?? 0)
+  const score = player.score - (previous?.points ?? 0)
 
   if (choiceIndex == null || previous?.choiceIndex === choiceIndex) {
     const nextPlayer: Player = { ...player, score, answers: rest }
@@ -135,8 +157,9 @@ export function revealNow(game: Game): Game {
 export function nextQuestion(game: Game): Game {
   const live = tickGame(game)
   if (live.phase !== "reveal") throw new Error("Attendez le verdict.")
+  const deck = questionsFor(live)
   const nextIndex = live.questionIndex + 1
-  if (nextIndex >= QUESTIONS.length) {
+  if (nextIndex >= deck.length) {
     return { ...live, phase: "podium", questionStartedAt: null }
   }
   return {
@@ -187,12 +210,15 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
 
   const youPlayer = youId ? live.players.find((p) => p.id === youId) : undefined
   const youAnswer = question && youPlayer ? youPlayer.answers[question.id] : undefined
+  const quizId = quizIdOf(live)
+  const quiz = quizId ? getQuiz(quizId) : null
+  const deck = questionsFor(live)
 
   return {
     pin: live.pin,
     phase: live.phase,
     questionIndex: live.questionIndex,
-    questionCount: QUESTIONS.length,
+    questionCount: deck.length,
     question: question
       ? {
           id: question.id,
@@ -227,5 +253,7 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
       ? live.players.filter((p) => p.answers[question.id]).length
       : 0,
     storage,
+    quizId: quiz?.id ?? null,
+    quizTitle: quiz?.title ?? null,
   }
 }

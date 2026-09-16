@@ -2,7 +2,7 @@ import type { Question } from "./types"
 
 export const TIME_LIMIT_MS = 40_000
 
-export const QUESTIONS: Question[] = [
+export const ODYSSEY_QUESTIONS: Question[] = [
   {
     id: "j1-any",
     day: "J1",

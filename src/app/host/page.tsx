@@ -8,7 +8,7 @@ import { Frame, formatPin } from "@/components/frame"
 import { Leaderboard, Podium } from "@/components/leaderboard"
 import { PADS, Shape } from "@/components/shapes"
 import { useGame } from "@/lib/use-poll"
-import type { PublicGame } from "@/lib/types"
+import type { PublicGame, QuizSummary } from "@/lib/types"
 
 const HOST_PIN = "gonogo.hostPin"
 const HOST_TOKEN = "gonogo.hostToken"
@@ -27,6 +27,8 @@ export default function HostPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [origin, setOrigin] = useState("")
   const [leaving, setLeaving] = useState(false)
+  const [quizzes, setQuizzes] = useState<QuizSummary[] | null>(null)
+  const [quizzesError, setQuizzesError] = useState<string | null>(null)
 
   const url =
     auth === "open" && pin && token
@@ -46,6 +48,37 @@ export default function HostPage() {
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
+
+  useEffect(() => {
+    if (auth !== "open") return
+    let cancelled = false
+    async function loadQuizzes() {
+      try {
+        const response = await fetch("/api/quizzes", { cache: "no-store" })
+        const payload = (await response.json()) as {
+          quizzes?: QuizSummary[]
+          error?: string
+        }
+        if (cancelled) return
+        if (response.status === 401) {
+          lockConsole()
+          return
+        }
+        if (!response.ok) {
+          setQuizzesError(payload.error ?? "Impossible de charger les briefs.")
+          return
+        }
+        setQuizzesError(null)
+        setQuizzes(payload.quizzes ?? [])
+      } catch {
+        if (!cancelled) setQuizzesError("Liaison sol indisponible.")
+      }
+    }
+    void loadQuizzes()
+    return () => {
+      cancelled = true
+    }
+  }, [auth, lockConsole])
 
   useEffect(() => {
     let cancelled = false
@@ -110,13 +143,13 @@ export default function HostPage() {
   }, [error, pin, leaving, auth, lockConsole])
 
   const act = useCallback(
-    async (action: "start" | "reveal" | "next") => {
+    async (action: "start" | "reveal" | "next" | "selectQuiz", quizId?: string) => {
       if (!pin || !token) return
       setActionError(null)
       const response = await fetch(`/api/games/${pin}/host`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostToken: token, action }),
+        body: JSON.stringify({ hostToken: token, action, quizId }),
       })
       const payload = await response.json()
       if (response.status === 401) {
@@ -288,7 +321,14 @@ export default function HostPage() {
       </header>
 
       {game.phase === "lobby" ? (
-        <Lobby game={game} joinUrl={joinUrl} onStart={() => void act("start")} />
+        <Lobby
+          game={game}
+          joinUrl={joinUrl}
+          quizzes={quizzes}
+          quizzesError={quizzesError}
+          onSelectQuiz={(quizId) => void act("selectQuiz", quizId)}
+          onStart={() => void act("start")}
+        />
       ) : null}
       {game.phase === "question" || game.phase === "reveal" ? (
         <QuestionStage
@@ -320,52 +360,101 @@ export default function HostPage() {
 function Lobby({
   game,
   joinUrl,
+  quizzes,
+  quizzesError,
+  onSelectQuiz,
   onStart,
 }: {
   game: PublicGame
   joinUrl: string
+  quizzes: QuizSummary[] | null
+  quizzesError: string | null
+  onSelectQuiz: (quizId: string) => void
   onStart: () => void
 }) {
+  const selected = quizzes?.find((quiz) => quiz.id === game.quizId)
+  const canStart = Boolean(game.quizId)
+
   return (
-    <section className="grid flex-1 gap-8 lg:grid-cols-[1.2fr_0.8fr] items-start">
-      <div>
-        <p className="text-paper-dim text-lg mb-3">Les opérateurs tapent ce code</p>
-        <p className="font-display text-[clamp(4rem,14vw,10rem)] leading-none tracking-wide">
-          {formatPin(game.pin)}
-        </p>
-        <button
-          type="button"
-          onClick={onStart}
-          className="mt-10 bg-go text-ink font-display text-4xl uppercase tracking-wide px-8 py-4"
-        >
-          GO
-        </button>
-      </div>
-      <div className="flex flex-col gap-6">
-        {joinUrl ? (
-          <div className="flex flex-col gap-2">
-            <Frame className="bg-paper p-4 w-fit text-ink">
-              <QRCodeSVG value={joinUrl} size={188} bgColor="#eadfc8" fgColor="#12181f" />
-            </Frame>
-            <p className="font-mono text-sm text-paper-dim break-all">{joinUrl}</p>
-          </div>
-        ) : null}
-        <Frame className="p-4 bg-ink/50">
-          <p className="font-mono text-sm text-paper-dim mb-3 tabular">
-            {String(game.players.length).padStart(2, "0")} callsigns
+    <section className="flex flex-1 flex-col gap-10">
+      <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] items-start">
+        <div>
+          <p className="text-paper-dim text-lg mb-3">Les opérateurs tapent ce code</p>
+          <p className="font-display text-[clamp(4rem,14vw,10rem)] leading-none tracking-wide">
+            {formatPin(game.pin)}
           </p>
-          <ul className="flex flex-wrap gap-2">
-            {game.players.map((player) => (
-              <li
-                key={player.id}
-                className="font-display uppercase tracking-wide bg-ink-3 px-3 py-1 text-lg"
-              >
-                {player.nickname}
-              </li>
-            ))}
-          </ul>
-        </Frame>
+        </div>
+        <div className="flex flex-col gap-6">
+          {joinUrl ? (
+            <div className="flex flex-col gap-2">
+              <Frame className="bg-paper p-4 w-fit text-ink">
+                <QRCodeSVG value={joinUrl} size={188} bgColor="#eadfc8" fgColor="#12181f" />
+              </Frame>
+              <p className="font-mono text-sm text-paper-dim break-all">{joinUrl}</p>
+            </div>
+          ) : null}
+          <Frame className="p-4 bg-ink/50">
+            <p className="font-mono text-sm text-paper-dim mb-3 tabular">
+              {String(game.players.length).padStart(2, "0")} callsigns
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {game.players.map((player) => (
+                <li
+                  key={player.id}
+                  className="font-display uppercase tracking-wide bg-ink-3 px-3 py-1 text-lg"
+                >
+                  {player.nickname}
+                </li>
+              ))}
+            </ul>
+          </Frame>
+        </div>
       </div>
+
+      <div>
+        <p className="font-display text-2xl uppercase tracking-wide mb-2">
+          Briefs disponibles
+        </p>
+        <p className="text-paper-dim mb-4">
+          Choisissez le quizz à lancer. Les callsigns peuvent rejoindre pendant le choix.
+        </p>
+        {quizzesError ? <p className="text-nogo mb-4">{quizzesError}</p> : null}
+        {!quizzes ? (
+          <p className="font-display text-xl uppercase text-paper-dim">Chargement des briefs…</p>
+        ) : (
+          <ul className="grid gap-3 md:grid-cols-2">
+            {quizzes.map((quiz) => {
+              const active = quiz.id === game.quizId
+              return (
+                <li key={quiz.id}>
+                  <Frame className={active ? "ring-2 ring-go bg-ink/50" : "bg-ink/50"}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectQuiz(quiz.id)}
+                      className="w-full text-left p-5 hover:bg-ink-3"
+                    >
+                      <p className="font-display text-2xl uppercase tracking-wide">{quiz.title}</p>
+                      <p className="text-paper-dim mt-1">{quiz.subtitle}</p>
+                      <p className="font-mono tabular text-sm text-paper-dim mt-3">
+                        {quiz.days.join(" · ")} · {quiz.questionCount} questions
+                      </p>
+                    </button>
+                  </Frame>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onStart}
+        disabled={!canStart}
+        className="self-start bg-go text-ink font-display text-4xl uppercase tracking-wide px-8 py-4 disabled:opacity-40"
+      >
+        {canStart ? `GO · ${selected?.title ?? game.quizTitle}` : "Choisissez un brief"}
+      </button>
     </section>
   )
 }
