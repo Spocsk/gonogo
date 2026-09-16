@@ -13,7 +13,7 @@ export default function HomePage() {
         </h1>
         <p className="mt-8 max-w-md text-lg text-paper-dim leading-relaxed">
           Recap live React + TypeScript, Bachelor 2. Une question, quatre
-          réponses, un callsign. Jours 1 à 4 d’Orbital Command.
+          réponses, un callsign. Jours 1 à 5 d’Orbital Command.
         </p>
       </section>
 

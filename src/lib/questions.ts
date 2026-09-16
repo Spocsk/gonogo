@@ -16,6 +16,8 @@ export const QUESTIONS: Question[] = [
       "C’est un alias plus sûr de `unknown`",
     ],
     correctIndex: 1,
+    explanation:
+      "`any` éteint le vérificateur sur cette valeur : plus d’autocomplete, plus d’erreur de compilation. `unknown` est l’inverse pédagogique — il force un test avant usage. Strict ne sauve rien si vous recouvrez tout avec `any` ou `as any`.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -31,6 +33,8 @@ export const QUESTIONS: Question[] = [
       "L’id peut changer tant que le nom reste identique",
     ],
     correctIndex: 2,
+    explanation:
+      "`readonly` est une contrainte TypeScript, pas un cadenas JavaScript. `vehicle.id = \"x\"` est une erreur de compilation. Après le build, JS peut encore muter : d’où l’habitude de renvoyer un nouvel objet plutôt que d’écrire dans l’ancien.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -46,6 +50,8 @@ export const QUESTIONS: Question[] = [
       "Un champ `kind` littéral distinct par variante",
     ],
     correctIndex: 3,
+    explanation:
+      "Le discriminant est un champ littéral (`kind: \"cargo\"` vs `kind: \"crewed\"`). Après `if (vehicle.kind === \"cargo\")`, TypeScript sait quels champs existent. Tout optionnel, ou un `as`, ne discrimine rien : 0 kg et « pas un cargo » restent indiscernables.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -61,6 +67,8 @@ export const QUESTIONS: Question[] = [
       "Est un hook React",
     ],
     correctIndex: 0,
+    explanation:
+      "Si toutes les variantes sont gérées, `vehicle` dans le `default` a le type `never` : `assertNever` compile. Ajoutez une famille sans `case`, et ce n’est plus `never` : `tsc` casse. C’est un filet d’exhaustivité, pas un log runtime.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -76,6 +84,8 @@ export const QUESTIONS: Question[] = [
       "Accepter une `Alert` dans un buffer de carburant",
     ],
     correctIndex: 2,
+    explanation:
+      "Immuable = nouvelle structure, ancienne intacte. `.push` mute le tableau partagé : un autre écran qui lit le même buffer voit le changement sans rendu. `T` empêche de glisser une alerte dans un buffer de carburant. `any[]` annule le contrat.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -91,6 +101,8 @@ export const QUESTIONS: Question[] = [
       "Le nom du véhicule",
     ],
     correctIndex: 1,
+    explanation:
+      "La `key` est l’identité stable de la ligne. `vehicle.id` survit au filtre et au tri. L’index recycle le mauvais state interne si Aquila et Titan s’inversent. `Math.random()` détruit et recrée à chaque rendu. Le nom peut doubler.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -106,6 +118,8 @@ export const QUESTIONS: Question[] = [
       "Lire l’input via `document.getElementById`",
     ],
     correctIndex: 1,
+    explanation:
+      "Une liste filtrée se calcule : `vehicles.filter(...)` pendant le rendu. Pas d’effet, pas de second state. Un `useEffect` + `setFiltered` introduit une frame de décalage. Muter `hidden` casse l’immuabilité. Le DOM n’est pas la source de vérité.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -121,6 +135,8 @@ export const QUESTIONS: Question[] = [
       "Fonctionne uniquement avec `key={index}`",
     ],
     correctIndex: 2,
+    explanation:
+      "React décide de re-rendre si la référence du state a changé. Muter puis `setVehicles(vehicles)` passe le même tableau : le rendu peut être sauté. Il faut un nouveau tableau et un nouveau véhicule (`map` + copie). Ce n’est pas une copie profonde magique.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -136,6 +152,8 @@ export const QUESTIONS: Question[] = [
       "`document.querySelector(\"input\").value`",
     ],
     correctIndex: 0,
+    explanation:
+      "Contrôlé = React affiche `value`, et `onChange` met à jour le state. `defaultValue` initialise le DOM une fois, puis le champ vit sa vie. Lire le DOM dans un effet ou via `querySelector` inverse le flux : l’écran n’est plus une fonction de l’état.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -151,6 +169,8 @@ export const QUESTIONS: Question[] = [
       "Dupliquer le JSX de section trois fois",
     ],
     correctIndex: 2,
+    explanation:
+      "`children` est un emplacement : le cadre pose padding, titre optionnel, bordure. Le métier (Aquila, missions) arrive en enfant. Des booléens `showHeader` transforment `Panel` en usine à cas. Dupliquer le JSX de section trois fois, c’est le problème que `children` évite.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -166,6 +186,8 @@ export const QUESTIONS: Question[] = [
       "`Link` / `NavLink` : l’URL change, F5 et Précédent marchent",
     ],
     correctIndex: 3,
+    explanation:
+      "`Link` / `NavLink` écrivent l’URL sans recharger l’app. F5 et Précédent redeviennent des outils. Un `useState` de module ment : l’adresse ne bouge pas. `window.location.href` casse la SPA (reload complet). Recopier quatre navs, c’est un layout qui devrait vivre une fois.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -181,6 +203,8 @@ export const QUESTIONS: Question[] = [
       "Deux redirections silencieuses vers `/fleet`",
     ],
     correctIndex: 1,
+    explanation:
+      "La route `/fleet/:vehicleId` a matché, mais l’id n’existe pas : c’est une ressource absente, avec un retour vers la flotte. `/pizza-on-mars` n’a aucune route : 404 `path=\"*\"`. Un même écran « introuvable » mélange « mauvais lien métier » et « URL hors carte ».",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -196,6 +220,8 @@ export const QUESTIONS: Question[] = [
       "Ne fonctionne qu’avec un `useState` du module",
     ],
     correctIndex: 1,
+    explanation:
+      "`useParams` lit l’URL, pas la base. Traitez-le comme une entrée utilisateur : string | undefined, éventuellement décodé, puis cherché dans les données. Absent, inconnu, mal encodé → écran métier, pas `!` ni crash. Ça ne remplace ni les `key` ni un state de module.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -211,6 +237,8 @@ export const QUESTIONS: Question[] = [
       "Est le bon endroit pour filtrer la liste",
     ],
     correctIndex: 1,
+    explanation:
+      "Les deps disent « relance si ça change ». `setVehicles` change `vehicles`, donc l’effet repart. Deps utiles : `vehicleId`, un flag, rien (`[]`) si le chargement est unique. Filtrer reste un calcul de rendu. `AbortController` est le cleanup, pas un substitut aux deps.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -226,6 +254,8 @@ export const QUESTIONS: Question[] = [
       "Un JSON `[]`",
     ],
     correctIndex: 2,
+    explanation:
+      "Le cleanup `abort()` annule volontairement la requête du composant démonté. `AbortError` / `DOMException` : on ignore, on n’affiche pas « Signal perdu ». Un 500 est une panne sol (retry). Un `[]` est un succès vide. Mélanger les trois ment à l’opérateur.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -241,6 +271,8 @@ export const QUESTIONS: Question[] = [
       "Convertit `fuel_ratio` en `fuelPercent`",
     ],
     correctIndex: 1,
+    explanation:
+      "`as` est un contrat pour le compilateur, effacé à l’exécution. Le JSON peut être un objet d’erreur, un 200 HTML, ou des champs manquants. Il faut `response.ok`, puis une adaptation / validation des champs (`fuel_ratio` → `fuelPercent`). L’assertion toute seule n’adapte rien.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -256,6 +288,8 @@ export const QUESTIONS: Question[] = [
       "500 doit afficher `0 %` de carburant",
     ],
     correctIndex: 1,
+    explanation:
+      "`[]` : le lien sol a répondu, la liste est vide — CTA « planifier une mission », pas « réessayer le réseau ». HTTP 500 : la requête a échoué — message de panne + retry. Afficher « Signal perdu » dans les deux cas, ou `0 %` sur une 500, mélange succès et incident.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -271,111 +305,134 @@ export const QUESTIONS: Question[] = [
       "Dire « donnée indisponible », jamais `0 %`",
     ],
     correctIndex: 3,
+    explanation:
+      "Zéro est une mesure (« réservoir vide »). Une donnée absente n’est pas une mesure. L’écran reste debout, le champ dit « indisponible », une anomalie part au journal. Crasher la fiche pour un champ optionnel, ou inventer 100 %, est pire qu’un trou assumé.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-label",
     day: "J5",
     context:
-      "TP 01 — ordre de mission contrôlé. Code, objectif, véhicule, date, fenêtres : React connaît chaque valeur. Un placeholder « Objectif… » qui remplace le `<label>` disparaît dès la première lettre. Le lecteur d’écran et le Tab n’ont plus de nom de champ.",
-    prompt: "Un placeholder à la place d’un `<label htmlFor>` :",
+      "TP 01 — formulaire d’ordre de mission entièrement contrôlé : code, objectif, véhicule, date, début et fin de fenêtre. React connaît chaque valeur (`value` + `onChange`). Un placeholder « Objectif de la mission… » à la place du `<label>` disparaît dès la première lettre. Le lecteur d’écran, le Tab et l’opérateur qui revient sur le champ n’ont plus de nom. `htmlFor` et `id` doivent être identiques : cliquer le libellé focus le champ.",
+    prompt:
+      "Pourquoi un placeholder ne remplace pas un `<label htmlFor>` sur un champ de mission ?",
     choices: [
-      "Suffit pour nommer le champ (lecteur d’écran compris)",
-      "Disparaît à la saisie : le champ n’a plus de nom",
-      "Remplace `htmlFor` / `id` une fois le submit lancé",
-      "Est obligatoire dès qu’on pose `aria-invalid`",
+      "Il suffit pour nommer le champ, lecteur d’écran compris",
+      "Il disparaît à la saisie : le champ n’a plus de nom visible ni annoncé",
+      "Il remplace `htmlFor` / `id` une fois le submit lancé",
+      "Il est obligatoire dès qu’on pose `aria-invalid`",
     ],
     correctIndex: 1,
+    explanation:
+      "Le placeholder est une aide temporaire, pas le nom du champ. Dès qu’on tape, il s’efface : plus de libellé à l’écran, et beaucoup de lecteurs d’écran l’ignorent ou ne le relisent pas. Un `<label htmlFor=\"objective\">` lié à `id=\"objective\"` reste. `aria-invalid` décrit l’erreur, pas le nom. Le submit ne « répare » pas un label manquant.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-aria",
     day: "J5",
     context:
-      "TP 02 — « Erreur de formulaire » n’aide personne. Un message actionnable dit quoi faire : « Choisissez une date postérieure au 10 septembre 2026 ». La bordure rouge seule est invisible pour une partie des opérateurs. `aria-invalid` et `aria-describedby` collent le texte au champ.",
-    prompt: "Un champ en erreur, côté HTML / accessibilité :",
+      "TP 02 — « Erreur de formulaire » n’aide personne. Un message actionnable dit quoi faire : « Choisissez une date postérieure au 10 septembre 2026 », pas « invalide ». La bordure rouge seule est invisible pour une partie des opérateurs (daltonisme, projection, thème console). `aria-invalid` signale l’état au lecteur d’écran ; `aria-describedby` pointe l’id du paragraphe d’erreur. La couleur confirme, elle ne porte pas l’information.",
+    prompt:
+      "Un champ en erreur, côté HTML et accessibilité, doit surtout :",
     choices: [
-      "Le passer en rouge suffit",
-      "`alert()` au submit, puis on continue",
-      "`aria-invalid` + `aria-describedby` vers le message qui nomme la correction",
-      "Désactiver l’input jusqu’au prochain F5",
+      "Passer en rouge, le message n’est qu’un plus visuel",
+      "Ouvrir un `alert()` au submit, puis laisser continuer",
+      "Avoir `aria-invalid` et `aria-describedby` vers le texte qui nomme la correction",
+      "Être désactivé jusqu’au prochain F5",
     ],
     correctIndex: 2,
+    explanation:
+      "Reliez le champ au texte : `aria-invalid={true}` et `aria-describedby=\"date-error\"` sur l’input, `id=\"date-error\"` sur le message. Le lecteur d’écran annonce alors l’erreur avec le champ. Un rouge orphelin, un `alert()` bloquant, ou un input disabled jusqu’au F5, ne disent pas quoi corriger et cassent le parcours clavier.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-submit",
     day: "J5",
     context:
-      "Toujours TP 02 — valider au bon moment : pas d’agression à la première lettre, blur pour le champ quitté, submit pour bloquer l’ordre. Un Submit `disabled` « pour éviter les erreurs » cache la raison. L’opérateur clique, lit le résumé, le focus va sur le premier champ fautif.",
-    prompt: "Désactiver le bouton Submit tant que le draft est invalide :",
+      "Toujours TP 02 — valider au bon moment : pas d’agression rouge à la première lettre, blur pour aider le champ quitté, submit pour bloquer l’ordre invalide, retrait de l’erreur dès que la règle repasse. Un Submit `disabled` « pour éviter les erreurs » cache la raison : l’opérateur clique dans le vide. Les règles vivent dans `validateMissionDraft` (fonction pure), pas dans le `disabled` du bouton.",
+    prompt:
+      "Pourquoi éviter de désactiver le bouton Submit tant que le draft est invalide ?",
     choices: [
-      "Cache la raison du blocage : le laisser cliquable, résumer, focuser",
-      "Est la seule façon d’être accessible",
-      "Remplace `aria-invalid`",
-      "Évite d’écrire `validateMissionDraft`",
+      "Ça cache la raison du blocage : le laisser cliquable, résumer les erreurs, focuser le premier champ",
+      "C’est la seule façon d’être accessible",
+      "Ça remplace `aria-invalid` sur les champs",
+      "Ça évite d’écrire `validateMissionDraft`",
     ],
     correctIndex: 0,
+    explanation:
+      "Un bouton disabled n’explique rien et se comporte mal au clavier. Laissez Submit cliquable : au clic, validez tout, affichez un résumé en tête de formulaire, posez le focus sur le premier champ en erreur (ordre : code, objectif, véhicule, date, fenêtres). `aria-invalid` reste sur les champs. La fonction pure décide ; le bouton n’est pas la règle.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-effect",
     day: "J5",
     context:
-      "TP 00 — recap fiche `/fleet/:vehicleId`. `useEffect` synchronise avec `/api/vehicles.json`, pas avec un calcul de liste. Cleanup : `AbortController`. Deps : `[vehicleId]`. Hydrater les missions dans `OperationsProvider` (TP 04), c’est le même geste : l’effet vit dans le Provider, jamais dans le reducer.",
-    prompt: "`fetch` des missions / du JSON véhicule : où ça vit ?",
+      "TP 00 — recap fiche `/fleet/:vehicleId` : `useEffect` synchronise avec `/api/vehicles.json`, deps `[vehicleId]`, cleanup `AbortController`. Ce n’est pas un calcul de liste (ça, c’est le rendu). TP 04 — hydrater les missions dans `OperationsProvider`, c’est le même geste : l’effet vit dans le Provider (synchro externe), puis un `dispatch`. Le reducer, lui, reste pur : pas de `fetch`, pas de `Date.now()` caché.",
+    prompt:
+      "Où doit vivre le `fetch` des missions ou du JSON véhicule ?",
     choices: [
-      "Dans `operationsReducer`, à côté de `mission/started`",
+      "Dans `operationsReducer`, à côté du case `mission/started`",
       "Dans un `useEffect` (page ou Provider), puis un `dispatch` éventuel",
-      "Dans `validateMissionDraft`, au submit",
+      "Dans `validateMissionDraft`, au moment du submit",
       "Nulle part : `as Vehicle[]` charge déjà le réseau",
     ],
     correctIndex: 1,
+    explanation:
+      "`useEffect` parle au monde extérieur (HTTP, timer, abonnement). Après la réponse, vous pouvez `dispatch` une action du type `missions/hydrated`. Le reducer calcule le prochain state, il ne fetch pas. `validateMissionDraft` est une fonction pure de règles. `as Vehicle[]` n’ouvre aucune socket : c’est une assertion de type.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-reducer",
     day: "J5",
     context:
-      "TP 03 — `operationsReducer(state, action) → nextState`. Même entrée, même sortie. Pas de `fetch`, pas de `Date.now()` caché, pas de `state.missions.push`. Les actions racontent un verbe métier (`mission/started`), pas « mets phase à X ». `assertNever` ferme le `switch`.",
-    prompt: "Un reducer de mission est correct s’il :",
+      "TP 03 — formule : `operationsReducer(state, action) → nextState`. Même entrée, même sortie. Les actions racontent un verbe métier (`mission/started`, `mission/aborted`), pas « mets phase à X ». Payload minimal (`id`, éventuellement `reason`). `assertNever` dans le `default` : ajouter `mission/rescheduled` casse la compilation tant que le `switch` n’a pas décidé.",
+    prompt:
+      "Qu’est-ce qui rend un reducer de mission correct ?",
     choices: [
-      "Mute `state.history` puis le retourne",
-      "Lance le POST abort lui-même",
-      "Appelle `Date.now()` pour dater sans que l’UI le sache",
-      "Reste pur : pas d’I/O, copies immuables, `assertNever` au `default`",
+      "Il mute `state.history` avec `.push`, puis le retourne",
+      "Il lance lui-même le POST abort vers le sol",
+      "Il appelle `Date.now()` pour dater, sans que l’UI le sache",
+      "Il reste pur : pas d’I/O, copies immuables, `assertNever` au `default`",
     ],
     correctIndex: 3,
+    explanation:
+      "Pur = testable et prévisible. Pas de `fetch`, pas de timer, pas de mutation de `state` (`[...history, entry]` plutôt que `.push`). `Date.now()` caché rend deux appels différents avec la « même » action. L’horloge, si besoin, arrive dans l’action (payload `at`) ou reste dans le handler UI. `assertNever` ferme le `switch` pour l’exhaustivité.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-illegal",
     day: "J5",
     context:
-      "Graphe du jour : `planned → in-flight → completed`, hold/resume, abort. `completed → in-flight` n’existe pas. Un `throw` métier crashe la console. L’opérateur doit voir le refus : state inchangé, entrée `rejected` dans l’historique.",
-    prompt: "`completed` + `mission/started` : le reducer doit :",
+      "Graphe du jour : `planned → started → in-flight → completed` ; depuis `in-flight`, `held` puis `resumed` ; `aborted` depuis le vol ou le hold. `completed → in-flight` n’existe pas, non plus que `planned → completed` sans vol. Un `throw` métier crashe la console React. L’opérateur doit voir le refus : phase identique, entrée `rejected` dans l’historique, UI toujours vivante.",
+    prompt:
+      "Si on dispatch `mission/started` sur une mission déjà `completed`, le reducer doit :",
     choices: [
-      "Passer quand même en `in-flight`",
+      "Passer quand même en `in-flight` pour « débloquer » l’opérateur",
       "Garder l’état, historiser `rejected`, sans `throw`",
-      "`throw new Error` pour arrêter React",
-      "Ignorer l’action sans aucune trace",
+      "`throw new Error` pour arrêter React tout de suite",
+      "Ignorer l’action sans aucune trace dans l’historique",
     ],
     correctIndex: 1,
+    explanation:
+      "Une transition illégale est un no-op explicite : même `missions`, plus une ligne d’historique `rejected` (qui, depuis quelle phase, vers quel verbe). Pas de `throw` : l’UI reste utilisable, le banc de transitions peut montrer avant / après identiques. Un silence total (aucun log) empêche le diagnostic. Appliquer `started` quand même casse le graphe métier.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "j5-context",
     day: "J5",
     context:
-      "TP 04 — le reducer raconte, il ne voyage pas. Missions, Contrôle et Alertes ont besoin du même state sans le faire transiter par `AppLayout`. Context transporte une valeur déjà calculée. `useOperations` throw hors Provider : un `null` « pour plus tard » cache l’oubli.",
-    prompt: "Context, par rapport au reducer :",
+      "TP 04 — le reducer raconte l’histoire, mais seul le composant qui appelle `useReducer` la connaît. Missions, Contrôle et Alertes ont besoin du même state sans le faire transiter par `AppLayout` (prop drilling). Context est un tuyau : il transporte une valeur déjà calculée. `useOperations` throw hors Provider (`\"OperationsProvider missing\"`) : un `null` « pour plus tard » cache l’oubli. Le Provider se place aussi bas que possible, aussi haut que nécessaire — autour des routes opérationnelles, pas autour du thème « au cas où ».",
+    prompt:
+      "Quel est le rôle de Context par rapport au reducer ?",
     choices: [
-      "Remplace `useReducer` : plus besoin d’actions",
-      "Crée l’état à chaque `useContext`",
-      "Transporte state + `dispatch` ; le reducer décide encore des transitions",
-      "Doit envelopper le thème, même si Contrôle n’en a pas besoin",
+      "Il remplace `useReducer` : plus besoin d’actions nommées",
+      "Il crée l’état à chaque `useContext`, indépendamment du Provider",
+      "Il transporte `state` + `dispatch` ; le reducer décide encore des transitions",
+      "Il doit envelopper le thème, même si Contrôle n’en a pas besoin",
     ],
     correctIndex: 2,
+    explanation:
+      "Reducer = règles (action → nextState). Context = portée dans l’arbre (Provider publie, `useContext` s’abonne). `useOperations` lit, il ne possède pas. Sans Provider, on throw tout de suite. Un id d’URL (`vehicleId`) et la query de recherche flotte restent hors Context : ils ne sont pas globaux à l’opération.",
     timeLimitMs: TIME_LIMIT_MS,
   },
 ]

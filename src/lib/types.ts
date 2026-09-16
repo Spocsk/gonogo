@@ -8,6 +8,7 @@ export type Question = {
   prompt: string
   choices: [string, string, string, string]
   correctIndex: 0 | 1 | 2 | 3
+  explanation: string
   timeLimitMs: number
 }
 
@@ -49,6 +50,7 @@ export type PublicQuestion = {
   choices: PublicChoice[]
   timeLimitMs: number
   correctIndex?: number
+  explanation?: string
 }
 
 export type PublicPlayer = {

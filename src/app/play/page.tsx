@@ -177,17 +177,24 @@ function PlayQuestion({
         })}
       </div>
       {game.phase === "reveal" ? (
-        <p
-          className={`px-4 py-4 pb-10 text-center font-display text-3xl tracking-wide ${
-            game.you?.lastCorrect ? "text-go" : "text-nogo"
-          }`}
-        >
-          {game.you?.lastCorrect
-            ? `GO · +${game.you.lastPoints ?? 0}`
-            : game.you?.answered
-              ? "NO-GO"
-              : "Sans réponse"}
-        </p>
+        <div className="px-4 py-4 pb-10 flex flex-col gap-3">
+          <p
+            className={`text-center font-display text-3xl tracking-wide ${
+              game.you?.lastCorrect ? "text-go" : "text-nogo"
+            }`}
+          >
+            {game.you?.lastCorrect
+              ? `GO · +${game.you.lastPoints ?? 0}`
+              : game.you?.answered
+                ? "NO-GO"
+                : "Sans réponse"}
+          </p>
+          {question.explanation ? (
+            <p className="text-sm leading-relaxed text-paper-dim text-left">
+              {question.explanation}
+            </p>
+          ) : null}
+        </div>
       ) : timedOut ? (
         <p className="px-4 py-4 pb-10 text-center text-paper-dim">Temps écoulé.</p>
       ) : game.you?.answered ? (

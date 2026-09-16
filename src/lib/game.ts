@@ -205,6 +205,7 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
           })),
           timeLimitMs: question.timeLimitMs,
           correctIndex: showCorrect ? question.correctIndex : undefined,
+          explanation: showCorrect ? question.explanation : undefined,
         }
       : null,
     questionStartedAt: live.questionStartedAt,

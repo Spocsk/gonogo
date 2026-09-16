@@ -446,6 +446,12 @@ function QuestionStage({
           )
         })}
       </ol>
+      {game.phase === "reveal" && question.explanation ? (
+        <p className="max-w-5xl text-lg leading-relaxed text-paper">
+          <span className="font-display uppercase tracking-wide text-go">Pourquoi · </span>
+          {question.explanation}
+        </p>
+      ) : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-4">
         <p className="font-mono tabular text-paper-dim">
           {game.answeredCount}/{game.players.length} réponses
