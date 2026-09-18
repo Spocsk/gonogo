@@ -14,7 +14,7 @@ export const QUIZZES: Quiz[] = [
   {
     id: "dock-control",
     title: "Dock Control",
-    subtitle: "Recap Python + FastAPI · jours 1 à 3",
+    subtitle: "Recap Python + FastAPI · jours 1 à 4",
     questions: DOCK_CONTROL_QUESTIONS,
   },
 ]
