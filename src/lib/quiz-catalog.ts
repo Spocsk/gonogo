@@ -8,7 +8,7 @@ export const QUIZZES: Quiz[] = [
   {
     id: "odyssey",
     title: "ODYSSEY-01",
-    subtitle: "Recap React + TypeScript · jours 1 à 5",
+    subtitle: "Recap React + TypeScript · jours 1 et 5",
     questions: ODYSSEY_QUESTIONS,
   },
   {
