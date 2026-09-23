@@ -3,377 +3,343 @@ import type { Question } from "../types"
 
 export const DOCK_CONTROL_QUESTIONS: Question[] = [
   {
-    id: "py-j1-ghost",
+    id: "py-j1-replay-post",
     day: "J1",
     context:
-      "Ghost Bike encore. Un payload arrive : `{\"serial\":\"HX-1042\",\"status\":\"docked\",\"station_id\":null,\"battery_pct\":\"37%\"}`. Deux invariants Helix cassés d’un coup : docké ⇒ une station ; `battery_pct` est un entier 0–100, pas une chaîne avec `%`.",
-    prompt: "Un vélo `docked` avec `station_id: null`, c’est :",
+      "Séance 1 — idempotence. `GET /stations/1` deux fois rend la même station. `PATCH` du même corps deux fois laisse le même état. `POST /stations` avec le body de HX-CHATELET-01, rejoué tel quel, n’est pas « la même création ».",
+    prompt: "Rejouer le même `POST /stations` :",
     choices: [
-      "Valide : le dock se déduit du serial",
-      "Valide si la batterie est au-dessus de 15 %",
-      "Une spec cassée : docké implique une station",
-      "Un 201 attendu sur `DELETE /health`",
+      "Rend 200 et la station déjà créée",
+      "Crée un deuxième dock : un POST de création n’est pas idempotent",
+      "Répond 409 dès que le body est identique au précédent",
+      "Équivaut à un GET qui crée la station si l’id manque",
+    ],
+    correctIndex: 1,
+    explanation:
+      "GET et PATCH (même corps) se rejouent. POST crée : le second appel alloue un autre dock. 409 est une collision (serial, code), pas « body déjà vu ». Un GET qui crée est le bug de la spec Ghost Bike.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j1-query-status",
+    day: "J1",
+    context:
+      "TP 03 — Empty Dock. La collection est `GET /stations`. On veut seulement les docks ouverts. Un camarade propose `GET /open-stations` « pour que Swagger soit plus clair ».",
+    prompt: "Le filtre « ouverts » se pose :",
+    choices: [
+      "En query `?status=open` sur `GET /stations`",
+      "Sur une nouvelle ressource `GET /open-stations`",
+      "Dans le path : `GET /stations/open`",
+      "En header, pour qu’OpenAPI n’ait pas à le montrer",
+    ],
+    correctIndex: 0,
+    explanation:
+      "`?status=open` affine la collection. Ce n’est pas une ressource. Path et route dédiée inventent un nom. Le query param doit apparaître dans `/docs`, à côté du path `{id}`.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j1-slots",
+    day: "J1",
+    context:
+      "TP 04 — Fleet Classes. Station `capacity` 12, 9 vélos déjà `docked`. `remaining_slots()` appartient à la station. La route l’appelle. Elle ne refait pas `capacity - docked_count` dans le handler.",
+    prompt: "`remaining_slots()` sur cette station :",
+    choices: [
+      "Vaut 21, recalculé dans chaque route",
+      "Vaut 12 : la capacité ignore les vélos déjà dockés",
+      "Vaut 3, méthode de `Station`, pas un `if` dans le handler",
+      "Vaut `None` tant qu’il n’y a pas de base SQL",
     ],
     correctIndex: 2,
     explanation:
-      "Invariants : `docked` ⇒ `station_id` non null ; `in_trip` ⇒ `station_id` null. Un docké orphelin est le Ghost Bike. La batterie en `\"37%\"` est un second défaut (unité). DELETE `/health` était l’autre aberration de la spec, pas une réparation.",
+      "12 − 9 = 3. La règle vit dans la classe, comme `is_rideable` sur `Bike`. Le jour 1 n’a pas encore de Postgres : la méthode se teste sans uvicorn. Un god dict partagé ne porte pas cette règle.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j3-form-vs-biz",
-    day: "J3",
+    id: "py-j1-helix-error",
+    day: "J1",
     context:
-      "Fin du jour 3 : trois familles. Forme (lat 200, battery `\"37%\"`) → 422. Ressource absente → 404. Conflit ou règle d’exploitation (serial pris, Flat Battery) → 409 ou 403. Les fusionner en un seul 400 « error » empêche le client de décider : corriger le champ, changer d’id, ou attendre une charge.",
-    prompt: "Lat 200 vs serial déjà pris vs batterie à 10 % sur un trajet :",
+      "Toujours Fleet Classes. `HelixError`, puis `StationNotFound` et `BikeNotRideable`. Trois classes, pas une pyramide. Aujourd’hui ce n’est pas encore le JSON renvoyé au client. Plus tard la route traduira en `HTTPException`.",
+    prompt: "`HelixError` aujourd’hui sert à :",
     choices: [
-      "Les trois en 500 avec traceback",
-      "422 / 409 / métier (403 ou 409) — pas le même tiroir",
-      "Tout en 422, Pydantic règle le monde",
-      "Tout en 201, on logue à part",
+      "Renvoyer déjà un body 404 à la place de `HTTPException`",
+      "Nommer le métier avant le code HTTP",
+      "Interdire tout `except` dans FastAPI",
+      "Écrire la traceback dans `GET /health`",
     ],
     correctIndex: 1,
     explanation:
-      "422 = schéma. 409 = unicité (SERIAL_TAKEN). Flat Battery = 403 ou 409 documenté, JSON pourtant valide. Pydantic ne connaît pas le seuil 15 %. Un 201 ou un 500 unique efface le diagnostic.",
+      "L’héritage nomme l’incident (`StationNotFound`, `BikeNotRideable`). Le code HTTP viendra après. Coller la stack dans `/health` ou sauter `HTTPException` trop tôt mélange le métier et le contrat REST.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j4-fk-n",
-    day: "J4",
+    id: "py-j1-bikes-on-dock",
+    day: "J1",
     context:
-      "TP 01 — Schema Sketch. Hier le JSON imbriquait les vélos dans la station. Aujourd’hui une table par entité. 1-N et N-1 nomment la même flèche. SQLAlchemy posera `relationship` des deux côtés. SQL n’écrit la FK qu’une fois.",
-    prompt: "La clé étrangère stations ↔ vélos se pose :",
+      "Mini-défi — `GET /stations/{id}/bikes`, encore en mémoire. Statuts du jour : `docked`, `in_trip`, `maintenance`, `offline`. HX-1042 est `in_trip`, `station_id` null. Un opérateur ouvre le dock de Châtelet.",
+    prompt: "Ce vélo `in_trip` sur la collection du dock :",
     choices: [
-      "Sur `stations.bike_ids`, un tableau d’entiers",
-      "Du côté N : `bikes.station_id` → `stations.id`",
-      "Des deux côtés, pour que le JOIN soit bidirectionnel",
-      "Nulle part : `relationship` suffit en SQL",
+      "Apparaît, avec `station_id` reconstruit depuis le serial",
+      "Apparaît si `battery_pct >= 15`",
+      "N’apparaît sur aucune station",
+      "Force un 201 pour « le rattacher »",
     ],
-    correctIndex: 1,
+    correctIndex: 2,
     explanation:
-      "La FK vit toujours du côté N. Pas de colonne `bike_ids` sur Station. `relationship` est Python, pas une colonne. Doubler la FK casserait la normalisation que le TP 1 dessine.",
+      "Un `in_trip` n’est sur aucun dock. L’afficher à Châtelet recrée Ghost Bike. `is_rideable` (docké et ≥ 15 %) est une autre règle : elle dit si on peut le louer, pas s’il est listé ici.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j2-patch",
+    id: "py-j2-omit-patch",
     day: "J2",
     context:
-      "TP 01 jour 2 — Dock CRUD. On corrige le `capacity` d’une station sans renvoyer tout l’objet. PUT remplacerait la ressource ; un champ oublié l’effacerait. PATCH est partiel : ce qui n’est pas dans le body reste.",
-    prompt: "Deux `PATCH` identiques sur la même station :",
+      "TP 01 — Dock CRUD. Station HX-NATION-02, `capacity` 20, `status` `open`. Le body du PATCH est seulement `{\"status\": \"closed\"}`. PUT, lui, remplacerait toute la ressource.",
+    prompt: "Après ce PATCH, `capacity` :",
     choices: [
-      "Le second doit répondre 409",
-      "Le second recrée la station (201)",
-      "Même état final : PATCH partiel et idempotent ici",
-      "Le premier est un GET déguisé",
+      "Passe à `null` : un champ omis est effacé",
+      "Passe à 0, valeur par défaut SQL",
+      "Reste 20 : un champ omis n’est pas un champ null",
+      "Disparaît du JSON, le fichier ne garde que `status`",
     ],
     correctIndex: 2,
     explanation:
-      "PATCH partiel : `{\"capacity\": 16}` deux fois laisse capacity à 16. Idempotent sur ce contrat. Ce n’est pas une création (201) ni un conflit (409). PUT, lui, remplacerait tout le document — un champ absent disparaîtrait.",
+      "PATCH est partiel. On change `status`, `capacity` reste. Rejouer le même PATCH laisse le même état. PUT aurait exigé l’objet entier : un champ absent aurait été perdu. Le 201, lui, est réservé à la création.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j1-post-201",
-    day: "J1",
-    context:
-      "Toujours Ghost Bike, puis TP 01 jour 2 — Dock CRUD. Le manifeste notait `POST /stations` → 200. Un 200 dit « j’ai lu ou mis à jour ». Une création réussie a son code : la ressource n’existait pas, elle existe maintenant, et le body porte souvent l’`id` alloué.",
-    prompt: "Un `POST /stations` qui crée vraiment une station répond :",
-    choices: [
-      "200 — comme un GET réussi",
-      "201 — ressource créée",
-      "204 — pas de body, donc pas d’id",
-      "409 — toute écriture est un conflit",
-    ],
-    correctIndex: 1,
-    explanation:
-      "201 Created. Le body renvoie la station avec son `id`. 200 laisse croire à une lecture. 204 sans body empêche le client de connaître l’id. 409 est pour un conflit (serial déjà pris), pas pour une création saine.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j4-integrity",
-    day: "J4",
-    context:
-      "TP 04 — Foreign Key Ghost. `POST /bikes` avec `station_id=999`. Sans filet, SQLAlchemy lève `IntegrityError` et FastAPI rend 500. L’opérateur n’a pas à lire psycopg. `rollback` obligatoire, sinon la session est empoisonnée pour la suite de la requête.",
-    prompt: "`POST /bikes` vers une station absente :",
-    choices: [
-      "201, SQLAlchemy crée le dock tout seul",
-      "500 + traceback `IntegrityError`",
-      "409 (ou 400 documenté), `rollback`, envelope stable",
-      "404, comme `GET /stations/999`",
-    ],
-    correctIndex: 2,
-    explanation:
-      "La base refuse l’INSERT. La route traduit : 409 `STATION_MISSING`, pas 500. `rollback` avant de répondre. 404 c’est « je lis un id inconnu ». 201 laisserait Ghost Bike. Un 500 sur une FK, c’est un `except` oublié.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j3-battery-field",
-    day: "J3",
-    context:
-      "TP 02 — Battery Bounds. Ghost Bike avait `battery_pct: \"37%\"`. Pydantic v2 : `battery_pct: int = Field(..., ge=0, le=100)`. Ce n’est plus une chaîne, plus un float libre, plus un pourcentage formaté. Le seuil Flat Battery (15) est une règle métier à part.",
-    prompt: "Sur `BikeCreate`, `battery_pct` se déclare surtout :",
-    choices: [
-      "`str` pour accepter `\"37%\"`",
-      "`int` + `Field(..., ge=0, le=100)`",
-      "`float` sans borne, on filtrera dans la route",
-      "`Optional[int]`, 15 par défaut",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Entier 0–100, borné par `Field`. `\"37%\"` doit 422, pas être parsé à la main. Filtrer dans la route trop tard : le JSON peut déjà être écrit. Le défaut 15 mélangerait « valeur absente » et « pile au seuil Flat Battery ».",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j2-serial",
+    id: "py-j2-station-missing",
     day: "J2",
     context:
-      "TP 02 — Stolen Serial. Chaque vélo a un `serial` unique (HX-1042). Un second `POST /bikes` avec le même serial n’est pas « encore une création ». C’est un conflit d’unicité. Un `station_id` qui n’existe pas, lui, est une ressource liée absente — autre code.",
-    prompt: "Serial déjà pris sur `POST /bikes` :",
+      "TP 02 — Stolen Serial. Deux `POST /bikes`. L’un répète le serial `HX-S2-1042`. L’autre est un serial neuf, `docked`, avec `station_id` qui ne correspond à aucune station du fichier.",
+    prompt: "Serial déjà pris, puis `station_id` inconnu :",
     choices: [
-      "200, on écrase le premier vélo",
-      "201, Helix accepte les doublons",
-      "404, comme une station absente",
-      "409, unicité cassée",
+      "409 puis 404 — unicité et ressource liée ne partagent pas le même code",
+      "Les deux en 400 « bad request »",
+      "Les deux en 201, on logue l’anomalie",
+      "404 pour le serial, 409 pour la station absente",
     ],
-    correctIndex: 3,
+    correctIndex: 0,
     explanation:
-      "409 Conflict pour le serial dupliqué. 404 si `station_id` pointe vers une station inconnue (lien cassé). 201 mentirait (« créé »). Écraser en 200 perd le premier vélo. Un seul choix par cas, documenté dans le README.",
+      "Collision de `serial` → 409. Station liée absente → 404. Les inverser ment à l’opérateur : il cherche un dock qui n’existe pas, ou il croit qu’un serial neuf est un conflit. `docked` sans `station_id` reste un refus Ghost Bike, à part.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j4-pragma",
-    day: "J4",
-    context:
-      "TP 02 puis Foreign Key Ghost. SQLite pédagogique, Postgres cible. Postgres enforce les FK par défaut. SQLite non : sans PRAGMA, `station_id=999` s’écrit, le filet est en plastique.",
-    prompt: "En local SQLite, les foreign keys :",
-    choices: [
-      "Sont toujours on, comme Postgres",
-      "Restent off tant que `PRAGMA foreign_keys=ON` n’est pas branché à l’engine",
-      "Sont remplacées par Pydantic `Field`",
-      "Interdisent `create_all`",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Branchez le PRAGMA à la création de l’engine. Postgres n’en a pas besoin. Pydantic valide l’entrée HTTP, pas l’intégrité SQL après restart. `create_all` crée les tables : ça n’active pas les FK SQLite.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j1-404",
-    day: "J1",
-    context:
-      "TP 03 — Empty Dock. `GET /stations/{id}` : la station n’est pas dans la liste mémoire. La spec Ghost Bike montrait un traceback Python dans le body. L’opérateur d’exploitation n’a pas à lire une stack FastAPI. `HTTPException` existe pour ça.",
-    prompt: "Station inconnue : la réponse correcte est :",
-    choices: [
-      "Un traceback Python dans le body, code 500",
-      "`HTTPException` 404, message lisible",
-      "200 avec `{}` pour « ne rien casser »",
-      "301 vers `GET /stations`",
-    ],
-    correctIndex: 1,
-    explanation:
-      "`raise HTTPException(status_code=404, detail=…)` : code métier, pas de stack. Un 500 + traceback fuit l’implémentation. Un 200 vide ment (« la station existe mais elle est creuse »). Une redirection vers la liste n’explique pas que l’id est faux.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j3-in-trip",
-    day: "J3",
-    context:
-      "Battery Bounds continue avec `model_validator`. Status en `Literal`. Après les champs unitaires : si `in_trip` alors `station_id is None` ; si `docked` alors `station_id` est un int. Un vélo `in_trip` encore accroché à la station 1 est incohérent — 422, pas un 201 « on verra ».",
-    prompt: "`in_trip` avec `station_id=1` sur `BikeCreate` :",
-    choices: [
-      "201 : le trajet a une station de départ",
-      "422 : `model_validator`, `station_id` doit être null",
-      "409 : serial forcément pris",
-      "403 Flat Battery, quel que soit le %",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Le validator croise deux champs. `in_trip` ⇒ pas de station. `docked` ⇒ une station. 201 laisserait un Ghost Bike inverse. 409 / Flat Battery sont d’autres règles (unicité, seuil 15 % à l’ouverture de trajet).",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j4-null",
-    day: "J4",
-    context:
-      "Schema Sketch. SQL autorise NULL. Le service refuse Ghost Bike. `station_id = 0` n’est pas « nulle part » : c’est un dock fantôme. `battery_pct = 0` est une vraie valeur (batterie plate). `ended_at = NULL` : le trip est encore `active`.",
-    prompt: "`bikes.station_id = NULL` vs `= 0` :",
-    choices: [
-      "Pareil : 0 et NULL veulent dire « nulle part »",
-      "NULL = `in_trip` ; 0 = un dock fantôme (id 0)",
-      "0 est obligatoire pour `in_trip`, NULL est interdit en SQL",
-      "NULL crash SQLite, il faut écrire 0",
-    ],
-    correctIndex: 1,
-    explanation:
-      "NULL = absence (vélo en trajet). 0 est une PK qui n’existe probablement pas — Ghost Bike SQL. La base autorise NULL ; le service refuse un `docked` sans station. Les deux couches se parlent.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j2-persist",
+    id: "py-j2-audit-line",
     day: "J2",
     context:
-      "Jour 1, la flotte vivait en mémoire. uvicorn redémarre → liste vide. Jour 2, `data/stations.json` et `data/bikes.json` survivent au process. Le TP JSON Fleet Store assemble les deux fichiers + un hold météo.",
-    prompt: "Après un restart uvicorn, une liste seulement en mémoire :",
+      "TP 03 — Night Audit. `data/night-audit.log` : une ligne, quatre champs, ISO-8601 UTC. `event` ∈ `dock`, `undock`, `offline`, `battery_low`. Le script n’est pas une route FastAPI. Une ligne est vide, une autre n’a que trois champs.",
+    prompt: "Le parseur face à la ligne cassée :",
     choices: [
-      "Revient intacte, FastAPI snapshot tout seul",
-      "Est perdue : d’où la persistance JSON du jour 2",
-      "Est recréée par `GET /health`",
-      "Est la même chose que `data/stations.json`",
+      "Lève et abandonne tout le fichier",
+      "La saute (compteur ou message), et `station_id` des bonnes lignes est un `int`",
+      "La recolle au JSON de la flotte et répond 201",
+      "Imprime le fichier brut : pas de liste d’événements",
     ],
     correctIndex: 1,
     explanation:
-      "La RAM meurt avec le process. Le JSON sur disque, non. `/health` ne restaure rien. `data/stations.json` est précisément le correctif du jour 2 — ce n’est pas « la même chose » que la liste Python en mémoire tant qu’on n’écrit pas le fichier.",
+      "Ligne vide ignorée. Ligne mal formée : skip, pas un crash du journal. Sortie : liste (`timestamp`, `station_id` int, `bike_serial`, `event`). Un `print` du texte brut ne structure rien. `dockctl` rejouera ce journal plus tard.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j3-pydantic-v2",
+    id: "py-j2-weather-hold",
+    day: "J2",
+    context:
+      "TP 04 — Weather Hold. Fixture locale `condition: storm`, pas Météo-France. `requests.get(..., timeout=2)`. Des stations `exposed: true`, d’autres non. Sans timeout, `GET /ops/weather` pend et `/health` ne répond plus.",
+    prompt: "Orage sur helix-city, aujourd’hui :",
+    choices: [
+      "PATCH silencieux : toute la ville passe `closed`",
+      "On recommande les `code` exposés ; on ne ferme pas la flotte ; timeout obligatoire",
+      "Timeout 30 s, stack `ConnectionError` dans `/docs` si ça rate",
+      "`json.load` du fichier, sans GET HTTP",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Recommandation seulement. L’admin appliquera plus tard. Un timeout explicite évite de prendre uvicorn en otage. L’échec est une phrase lisible, pas une traceback. Le TP exige un GET HTTP vers la fixture, pas un `json.load` seul.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j2-save-when",
+    day: "J2",
+    context:
+      "Incident ops : `POST` HX-NATION-02 répond, puis Ctrl-C. `GET /stations` → `[]`. `load_fleet` au démarrage ne sert à rien si personne n’a écrit `data/fleet.json`. Lifespan ou appels explicites : le cours s’en fiche, pas du moment.",
+    prompt: "`save_fleet` s’appelle :",
+    choices: [
+      "Une fois par nuit, dans le parseur de `night-audit.log`",
+      "À chaque mutation, avant de croire le 201",
+      "Seulement si `/health` passe à 503",
+      "Jamais : uvicorn snapshot la liste Python tout seul",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Chaque POST, PATCH (stations et bikes) écrit le fichier. Sinon le 201 n’a eu lieu qu’en RAM. Au restart, `load_fleet` relit le disque. Le JSON est la vérité du jour 2. Postgres arrive au jour 4.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j3-extra-forbid",
     day: "J3",
     context:
-      "Capsule jour 3 : Pydantic **v2**. `BaseModel`, `Field`, `ConfigDict`, `model_validator`. Ce n’est plus v1 (`@validator`, `orm_mode`, `class Config:`). Un copier-coller Stack Overflow v1 compile parfois, et ment sur le contrat du cours.",
-    prompt: "Le standard du cours Dock Control pour valider les bodies :",
+      "TP 01 — Invalid Station. `StationCreate` : `code` non vide, `lat` ∈ [-90, 90], `lng` ∈ [-180, 180], `capacity >= 1`, `ConfigDict(extra=\"forbid\")`. Le POST porte un `lat` valide et un champ `foo` que personne n’a déclaré.",
+    prompt: "Le champ `foo` en trop :",
     choices: [
-      "Pydantic v1 : `@validator` et `orm_mode`",
-      "Pydantic v2 : `Field`, `ConfigDict`, `model_validator`",
-      "Des `if` dans chaque route, sans schéma",
-      "`dict` + `response_model=None` partout",
+      "Est ignoré, 201, OpenAPI n’a pas à le connaître",
+      "Est stocké dans `fleet.json` « au cas où »",
+      "Fait 422 : `extra=\"forbid\"` refuse les champs fantômes",
+      "Devient l’`id` de la station",
     ],
-    correctIndex: 1,
+    correctIndex: 2,
     explanation:
-      "v2 uniquement. `@validator` / `orm_mode` sont v1. Les `if` dans la route reviennent au god dict du jour 1. `response_model` documente la sortie OpenAPI : le désactiver partout cache le contrat que `/docs` doit montrer.",
+      "Pydantic v2 jette ce qui n’est pas dans le schéma. `lat=200` ou `capacity=0` sont aussi des 422, avant toute écriture. La borne doit se voir dans `/docs`. Un `if` dans la route, oubliable, n’est pas le contrat.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j4-mapped",
+    id: "py-j3-create-read",
+    day: "J3",
+    context:
+      "Create n’est pas Read. L’opérateur envoie `code`, coordonnées, `capacity`. L’`id` est alloué par l’API. `StationRead` est ce qui sort, via `response_model`. Un god dict ou l’ORM brut n’est pas une réponse.",
+    prompt: "Sur `POST /stations`, l’`id` :",
+    choices: [
+      "Est obligatoire dans `StationCreate` : le client le choisit",
+      "N’est pas dans l’entrée ; `StationRead` le renvoie après création",
+      "Est le `code` (`HX-CHATELET-01`), pas une clé interne",
+      "Reste caché : 201 sans body",
+    ],
+    correctIndex: 1,
+    explanation:
+      "L’entrée n’expose pas l’`id`. La sortie le porte, schéma `StationRead`, pas un dict accidentel. 201 sans body laisse le client sans identifiant. `response_model` est aussi la frontière : pas de traceback, pas de chemin de fichier, pas d’objet ORM dumpé.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j3-literal",
+    day: "J3",
+    context:
+      "Séance 3 — statuts fermés. Station : `open`, `closed`, `maintenance`. Vélo : `docked`, `in_trip`, `offline`. Le payload dit `status: \"riding\"`. Chaque champ, pris seul, pourrait passer si `status` était une `str` libre.",
+    prompt: "`status: \"riding\"` sur `BikeCreate` :",
+    choices: [
+      "201 : une chaîne est une chaîne",
+      "409 Flat Battery, quel que soit le pourcentage",
+      "422 : `Literal` (ou enum), pas une chaîne libre",
+      "200, et `/docs` documente `riding` comme alias",
+    ],
+    correctIndex: 2,
+    explanation:
+      "Hors liste → 422. `Field` borne un nombre (`battery_pct` 0–100). Il ne ferme pas une liste de statuts. `model_validator` viendra pour deux champs vrais chacun et faux ensemble (`docked` sans station).",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j3-field-vs-validator",
+    day: "J3",
+    context:
+      "TP 02 — Battery Bounds. Payload A : `battery_pct` 140, `docked`, `station_id` 1. Payload B : `battery_pct` 40, `docked`, `station_id` null. Les deux sont refusés. Pas pour la même raison.",
+    prompt: "140 % vs Ghost Bike (`docked` sans station) :",
+    choices: [
+      "`Field(ge=0, le=100)` suffit pour les deux",
+      "140 → `Field` ; Ghost Bike → `model_validator` (deux champs cohérents ensemble)",
+      "Les deux → 409 `FLAT_BATTERY`",
+      "Les deux passent : on corrigera au PATCH",
+    ],
+    correctIndex: 1,
+    explanation:
+      "140 est hors bornes, un champ. `docked` + `station_id` null : chaque pièce peut être valide, le couple non. `in_trip` exige `station_id is None`. Le seuil 15 % à l’ouverture d’un trajet est encore une autre règle, métier, pas ce schéma.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j3-patch-ghost",
+    day: "J3",
+    context:
+      "Mini-défi — `BikePatch`. Le vélo est `in_trip`, `station_id` null, batterie 40. Le PATCH envoie `{\"status\": \"docked\"}` sans `station_id`. Un PATCH partiel peut encore fabriquer un Ghost Bike si le schéma ne regarde que le body.",
+    prompt: "Ce PATCH `docked` sans station :",
+    choices: [
+      "201 : on crée un second vélo docké",
+      "Passe : le champ omis « reste null » et c’est voulu",
+      "Doit être refusé : l’invariant 1 s’applique aussi au partiel",
+      "404, le vélo `in_trip` n’existe plus",
+    ],
+    correctIndex: 2,
+    explanation:
+      "Après merge, `docked` + `station_id` null est Ghost Bike. Le `model_validator` voit l’état résultant, pas seulement les clés envoyées. 201 n’est pas un PATCH. 404 serait un id inconnu.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j4-sql-types",
     day: "J4",
     context:
-      "TP 02 — ORM Mapping. Trois couches : Pydantic valide l’HTTP, SQLAlchemy persiste la ligne, SQL contraint pour de bon. Ce ne sont pas les mêmes classes. SQLAlchemy 2 : `Mapped` + `mapped_column`. Un tutoriel 1.4 avec `Column(Integer)` ne se mixe pas.",
-    prompt: "Le mapping ORM du cours, c’est :",
+      "Séance 4 — six types, pas plus. `battery_pct` compte. `lat` / `lng` sont du WGS84. `exposed` est vrai ou faux. `started_at` est un horodatage UTC. Le JSON acceptait encore `\"80%\"` et `\"true\"`.",
+    prompt: "`battery_pct`, `lat`, `exposed` en SQL :",
     choices: [
-      "Réutiliser `StationCreate` Pydantic comme table",
-      "SQLAlchemy 1.4 `Column(Integer)` mélangé à `Mapped`",
-      "SQLAlchemy 2 : `Mapped[...]` + `mapped_column`, classes à part",
-      "`dict` + `json.dump` dans `get_db`",
-    ],
-    correctIndex: 2,
-    explanation:
-      "`Mapped` copie le contrat, il ne l’invente pas. Pydantic ≠ ORM ≠ table SQL. `from_attributes` fait le pont en sortie. Mélanger `Column` 1.4 et `Mapped` : on jette, on ne mixe pas. `json.dump` c’était le jour 2.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j1-rideable",
-    day: "J1",
-    context:
-      "Toujours Fleet Classes. Helix refuse un départ sous 15 % (Flat Battery). `is_rideable()` n’est pas « batterie haute ». Un vélo `in_trip` à 80 % n’est plus au dock : on ne le propose pas à un nouvel usager. Un `docked` à 10 % non plus.",
-    prompt: "`Bike(status=\"in_trip\", battery_pct=80).is_rideable()` :",
-    choices: [
-      "True : 80 % dépasse le seuil",
-      "False : il faut `docked` et `battery_pct >= 15`",
-      "True si `station_id` est renseigné",
-      "Ça lève `StationNotFound`",
+      "`VARCHAR` partout : on parsera à la lecture",
+      "`INTEGER`, `FLOAT`, `BOOLEAN` — pas `\"80%\"`, pas une latitude en texte",
+      "`FLOAT` pour la batterie, `INTEGER` pour la latitude",
+      "`ARRAY` de vélos dans la colonne `stations.bikes`",
     ],
     correctIndex: 1,
     explanation:
-      "Rideable = docké **et** batterie ≥ 15. `in_trip` à 80 % → False. `docked` à 10 % → False. `docked` à 40 % → True. `StationNotFound` concerne une station absente, pas cette règle. `station_id` ne remplace pas le statut.",
+      "Batterie : `INTEGER` 0–100. Coordonnées : `FLOAT`. `exposed` : `BOOLEAN`. `status` : `VARCHAR` fermé, pas un booléen. Pas de JSON, pas d’UUID, pas d’ARRAY aujourd’hui. Pydantic filtre l’HTTP. SQL filtre ce qui survit au restart.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j3-lat",
-    day: "J3",
-    context:
-      "TP 01 jour 3 — Invalid Station. `StationCreate` : latitude ∈ [-90, 90], longitude ∈ [-180, 180], `capacity ≥ 1`. Un POST `{..., \"lat\": 200}` n’est pas « presque Paris ». Rien ne doit atterrir dans `data/stations.json`.",
-    prompt: "`POST /stations` avec `lat: 200` :",
-    choices: [
-      "201, Helix clamp à 90",
-      "404, la station n’existe pas encore",
-      "422, et le JSON flotte inchangé",
-      "409, latitude déjà prise",
-    ],
-    correctIndex: 2,
-    explanation:
-      "422 Unprocessable Entity : le body ne passe pas le schéma. Aucune écriture. 201 écrirait n’importe quoi. 404 c’est « id inconnu », pas « champ hors bornes ». 409 c’est un conflit d’unicité (serial), pas une latitude.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j4-restrict",
+    id: "py-j4-pk-unique",
     day: "J4",
     context:
-      "Capsule FK. Effacer Nation ne doit pas avaler ses vélos en silence. Trois politiques SQL : `RESTRICT`, `CASCADE`, `SET NULL`. Le défaut du jour pour Dock Control est clair — le service décide ensuite comment parler à l’opérateur.",
-    prompt: "`ON DELETE` sur `bikes.station_id` aujourd’hui :",
+      "Trois verrous. `stations.id` identifie la ligne. `bikes.serial` et `stations.code` sont ce que l’opérateur lit (`HX-S2-1042`, `HX-CHATELET-01`). `DEFAULT` sur une colonne n’est pas la règle Flat Battery.",
+    prompt: "PK et UNIQUE, ici :",
     choices: [
-      "`CASCADE` : supprimer le dock supprime la flotte",
-      "`SET NULL` : les vélos deviennent Ghost Bike SQL",
-      "`RESTRICT` : refus si des vélos pointent encore",
-      "`IGNORE` : SQLite n’a pas de FK",
-    ],
-    correctIndex: 2,
-    explanation:
-      "`RESTRICT` (défaut du jour) : la base refuse. `CASCADE` est dangereux. `SET NULL` recrée Ghost Bike. SQLite a des FK, mais il faut le PRAGMA. Pas un DELETE silencieux de la flotte.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j1-get-create",
-    day: "J1",
-    context:
-      "TP 01 — Ghost Bike. Un camarade annote une spec Helix : `GET /stations/{id}` « crée la station si elle n’existe pas ». REST ne marche pas comme une base qui s’auto-remplit. Un GET lit une ressource ; il ne la fabrique pas pour arranger le client.",
-    prompt: "Un `GET /stations/99` sur une station absente doit :",
-    choices: [
-      "Créer la station 99 puis répondre 200",
-      "Répondre 201 avec un body vide",
-      "Répondre 404, sans écrire de station",
-      "Répondre 204 et supprimer `/health`",
-    ],
-    correctIndex: 2,
-    explanation:
-      "GET est une lecture. Ressource absente → 404. Inventer la station « pour que ça marche » casse l’idempotence et masque un bug client. 201 est une création (POST). 204 sur `/health` n’a rien à voir : ce n’est pas une ressource métier à supprimer.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "py-j3-envelope",
-    day: "J3",
-    context:
-      "TP 03 et 05 — Structured 422 + Error Catalog. FastAPI brut envoie `detail` (liste de loc/msg). Helix aligne tous les échecs : 400, 404, 409, 422, Flat Battery. Même forme, codes métier stables (`STATION_NOT_FOUND`, `SERIAL_TAKEN`, `VALIDATION_ERROR`, `FLAT_BATTERY`).",
-    prompt: "L’envelope d’erreur Helix porte les clés :",
-    choices: [
-      "`detail` uniquement, comme FastAPI par défaut",
-      "`code`, `message`, `details`",
-      "`stack` et `traceback` pour le front",
-      "`ok: false` sans code métier",
+      "`serial` est la PK : l’`id` est décoratif",
+      "`id` est interne (PK) ; `code` / `serial` sont UNIQUE, lus par l’opérateur",
+      "UNIQUE remplace la FK `station_id`",
+      "`DEFAULT 15` sur `battery_pct` interdit les départs sous 15 %",
     ],
     correctIndex: 1,
     explanation:
-      "`code` machine, `message` humain, `details` optionnel. Un handler `RequestValidationError` traduit le 422 vers cette envelope. `detail` brut casse les clients. Stack/traceback : c’est Ghost Bike, pas le catalogue.",
+      "La PK n’est pas l’unicité métier. `NOT NULL` oblige une valeur (`trips.bike_id`). `NULL` autorise l’absence (`bikes.station_id` en trajet). Un `DEFAULT` SQL ne remplace pas `is_rideable`.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j4-off-json",
+    id: "py-j4-back-populates",
     day: "J4",
     context:
-      "TP 03 — Migrate Off JSON, puis TP 05 First Query. `POST /stations` → 201. Tuer uvicorn. Si GET relit encore `fleet.json`, la ligne SQL n’existe pas pour le client. Deux sources de vérité, c’est zéro. `GET /stations/{id}/bikes` passe par `station.bikes`, pas un `json.load`.",
-    prompt: "Après la migration du jour 4, les routes stations/bikes :",
+      "TP 02 — ORM. `Station.bikes` est une liste (1-N). `Bike.station` est un objet ou `None` (N-1). `mapped_column(ForeignKey(\"stations.id\"))` n’est écrit qu’une fois. `Mapped[int | None]` sur `station_id`.",
+    prompt: "`back_populates` et `Mapped[int | None]` :",
     choices: [
-      "Lisent le JSON, et SQL en fallback « au cas où »",
-      "Parlent à la session (`get_db`) : le JSON n’est plus la vérité",
-      "Doivent appeler `save_fleet()` après chaque `commit`",
-      "Changent de path dès que `DATABASE_URL` pointe vers Postgres",
+      "`back_populates` relie les deux attributs du même 1-N ; `None` autorise `in_trip`",
+      "Il faut une seconde FK sur `stations.bike_ids`",
+      "`Mapped[int]` sans `None` : `in_trip` mettra `station_id` à 0",
+      "`relationship` écrit la colonne SQL à la place de `ForeignKey`",
     ],
-    correctIndex: 1,
+    correctIndex: 0,
     explanation:
-      "`Depends(get_db)`, `add` / `commit` / `refresh`. Plus de `load_fleet` / `save_fleet` sur le nominal. L’URL change (SQLite → Postgres), les routes non. Un fallback JSON recrée deux vérités. Tuer uvicorn : la flotte est encore en base.",
+      "Sans `back_populates`, SQLAlchemy ne sait pas que les deux faces sont le même lien. Oublier `| None` interdit le NULL de `in_trip`. La FK reste du côté N. `relationship` n’est pas une colonne.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "py-j3-flat",
-    day: "J3",
+    id: "py-j4-session-close",
+    day: "J4",
     context:
-      "TP 04 — Flat Battery. `POST /trips` : le JSON est valide (types, bornes, `station_id` cohérent) mais `battery_pct < 15`. Ce n’est pas une erreur de forme. Helix refuse le métier : 403 ou 409, choix unique documenté. Pas un 422 Pydantic.",
-    prompt: "Ouverture de trajet, batterie à 10 %, body sinon valide :",
+      "Une requête, une session. `Depends(get_db)` ouvre, la route `add` / `commit` / `refresh`, puis la session se ferme. `POST /bikes` lève 409 (`IntegrityError`, rollback). Un mot de passe Postgres traîne dans un commit « pour que ça marche en salle ».",
+    prompt: "Après le 409, et pour `DATABASE_URL` :",
     choices: [
-      "422, Pydantic refuse le pourcentage",
-      "201, `is_rideable` est décoratif",
-      "403 ou 409 métier (FLAT_BATTERY), pas 422",
-      "404, le vélo n’existe plus",
+      "On garde une session globale : la rouvrir coûte trop cher",
+      "`finally` ferme quand même ; l’URL vient de l’env, le secret reste hors du dépôt",
+      "On laisse la session ouverte pour le GET suivant",
+      "Les routes changent de path quand on passe de SQLite à Postgres",
     ],
-    correctIndex: 2,
+    correctIndex: 1,
     explanation:
-      "10 est dans [0, 100] : le schéma passe. La règle d’exploitation refuse le départ. 422 = forme. 403/409 = métier, code `FLAT_BATTERY`. 201 trahirait `is_rideable`. 404 c’est « vélo inconnu », pas « trop plat ».",
+      "Même si la route répond 409, `finally` ferme. Sinon la connexion fuit. SQLite si l’env est vide, Postgres dès que `DATABASE_URL` le dit. Les paths ne bougent pas. `.env.example` sans secret réel. `create_all` suffit, Alembic peut attendre.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "py-j4-station-bikes",
+    day: "J4",
+    context:
+      "TP 05 — First Query. `GET /stations/1/bikes`. Trois vélos ont `station_id = 1`. HX-9104 est `in_trip`, `station_id` NULL. Le dock 999 n’existe pas. La route ne filtre plus une liste Python à la main.",
+    prompt: "Cette collection liée :",
+    choices: [
+      "Passe par `station.bikes` ; 404 si le dock manque ; le `in_trip` est absent",
+      "Relit `fleet.json`, SQL seulement si le fichier est vide",
+      "Renvoie aussi HX-9104, `station_id` forcé à 1",
+      "Exige un `JOIN` écrit dans la route, `relationship` est optionnel",
+    ],
+    correctIndex: 0,
+    explanation:
+      "`db.get(Station, id)` → 404 si absent. `station.bikes` est le lien (le JOIN, vous ne l’écrivez plus). `in_trip` a `station_id` NULL : hors de cette liste. `list[BikeRead]` via `from_attributes`. Tuer uvicorn : la flotte est toujours en base.",
     timeLimitMs: TIME_LIMIT_MS,
   },
 ]
