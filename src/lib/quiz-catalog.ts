@@ -1,6 +1,8 @@
 import { ODYSSEY_QUESTIONS } from "./questions"
 import { DOCK_CONTROL_QUESTIONS } from "./quizzes/dock-control"
-import type { Quiz, QuizSummary } from "./types"
+import type { DayTag, Quiz, QuizSummary } from "./types"
+
+const DAY_ORDER: DayTag[] = ["J1", "J2", "J3", "J4", "J5"]
 
 export const DEFAULT_QUIZ_ID = "odyssey"
 
@@ -14,7 +16,7 @@ export const QUIZZES: Quiz[] = [
   {
     id: "dock-control",
     title: "Dock Control",
-    subtitle: "Recap Python + FastAPI · jours 1 à 4",
+    subtitle: "Recap Python + FastAPI · jours 1 à 5",
     questions: DOCK_CONTROL_QUESTIONS,
   },
 ]
@@ -29,6 +31,8 @@ export function listQuizSummaries(): QuizSummary[] {
     title: quiz.title,
     subtitle: quiz.subtitle,
     questionCount: quiz.questions.length,
-    days: [...new Set(quiz.questions.map((question) => question.day))],
+    days: DAY_ORDER.filter((day) =>
+      quiz.questions.some((question) => question.day === day),
+    ),
   }))
 }
