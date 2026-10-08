@@ -4,7 +4,6 @@ import { hasValidHostCookie, hostUnauthorized } from "@/lib/host-auth"
 import { pinExists, saveGame, storageKind } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
-export const preferredRegion = "fra1"
 
 export async function POST(request: Request) {
   if (!hasValidHostCookie(request)) {

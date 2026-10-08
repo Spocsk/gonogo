@@ -1,4 +1,5 @@
 import type { PublicPlayer } from "@/lib/types"
+import { StreakBadge } from "./streak-badge"
 
 export function Leaderboard({
   players,
@@ -37,7 +38,10 @@ export function Leaderboard({
                 {player.nickname}
               </span>
             </span>
-            <span className="font-mono tabular text-lg text-go">{player.score}</span>
+            <span className="flex shrink-0 flex-wrap items-center justify-end gap-x-4 gap-y-1">
+              {player.streak >= 2 ? <StreakBadge streak={player.streak} /> : null}
+              <span className="font-mono tabular text-lg text-go">{player.score}</span>
+            </span>
           </li>
         )
       })}

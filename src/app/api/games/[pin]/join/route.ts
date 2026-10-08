@@ -3,7 +3,6 @@ import { joinPlayer, tickGame, toPublic } from "@/lib/game"
 import { saveGame, storageKind, withGameLock } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
-export const preferredRegion = "fra1"
 
 type Ctx = { params: Promise<{ pin: string }> }
 
@@ -19,15 +18,17 @@ export async function POST(request: Request, ctx: Ctx) {
   try {
     const result = await withGameLock(pin, async (game) => {
       if (!game) return { status: 404 as const, error: "Lien sol introuvable." }
-      const live = tickGame(game)
+      const now = Date.now()
+      let live = tickGame(game, now)
+      if (live !== game) live = await saveGame(live)
       const { game: next, player } = joinPlayer(live, body.nickname ?? "")
-      await saveGame(next)
+      const stored = await saveGame(next)
       return {
         status: 200 as const,
         body: {
           playerId: player.id,
           nickname: player.nickname,
-          game: toPublic(next, { role: "player", playerId: player.id }, storageKind()),
+          game: toPublic(stored, { role: "player", playerId: player.id }, storageKind(), now),
         },
       }
     })

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
 import {
   nextQuestion,
+  pauseReveal,
   revealNow,
+  resumeReveal,
   selectQuiz,
   startBrief,
   tickGame,
@@ -12,10 +14,9 @@ import { deleteGame, saveGame, storageKind, withGameLock } from "@/lib/store"
 import type { Game } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
-export const preferredRegion = "fra1"
 
 type Ctx = { params: Promise<{ pin: string }> }
-type Action = "start" | "reveal" | "next" | "abort" | "selectQuiz"
+type Action = "start" | "reveal" | "next" | "abort" | "selectQuiz" | "pauseReveal" | "resumeReveal"
 
 export async function POST(request: Request, ctx: Ctx) {
   if (!hasValidHostCookie(request)) {
@@ -23,11 +24,14 @@ export async function POST(request: Request, ctx: Ctx) {
   }
 
   const { pin } = await ctx.params
-  let body: { hostToken?: string; action?: Action; quizId?: string }
+  let body: { hostToken?: string; action?: Action; quizId?: string; questionId?: string }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: "JSON invalide." }, { status: 400 })
+  }
+  if (body.questionId != null && typeof body.questionId !== "string") {
+    return NextResponse.json({ error: "questionId invalide." }, { status: 400 })
   }
 
   try {
@@ -40,14 +44,20 @@ export async function POST(request: Request, ctx: Ctx) {
         await deleteGame(pin)
         return { status: 200 as const, body: { aborted: true } }
       }
-      const live = tickGame(game)
+      const now = Date.now()
+      let live = tickGame(game, now)
+      if (live !== game) live = await saveGame(live)
       let next: Game | null
       if (body.action === "start") {
-        next = startBrief(live)
+        next = startBrief(live, now)
       } else if (body.action === "reveal") {
-        next = revealNow(live)
+        next = revealNow(live, now, body.questionId)
       } else if (body.action === "next") {
-        next = nextQuestion(live)
+        next = nextQuestion(live, now, body.questionId)
+      } else if (body.action === "pauseReveal") {
+        next = pauseReveal(live, now, body.questionId)
+      } else if (body.action === "resumeReveal") {
+        next = resumeReveal(live, now, body.questionId)
       } else if (body.action === "selectQuiz") {
         if (!body.quizId) {
           return { status: 400 as const, error: "Brief manquant." }
@@ -57,10 +67,10 @@ export async function POST(request: Request, ctx: Ctx) {
         next = null
       }
       if (!next) return { status: 400 as const, error: "Action inconnue." }
-      await saveGame(next)
+      const stored = await saveGame(next)
       return {
         status: 200 as const,
-        body: toPublic(next, { role: "host", token: game.hostToken }, storageKind()),
+        body: toPublic(stored, { role: "host", token: game.hostToken }, storageKind(), now),
       }
     })
     if (result.status !== 200) {

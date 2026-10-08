@@ -8,7 +8,6 @@ import {
 import { listQuizSummaries } from "@/lib/quiz-catalog"
 
 export const dynamic = "force-dynamic"
-export const preferredRegion = "fra1"
 
 export async function GET(request: Request) {
   if (!passwordConfigured()) {

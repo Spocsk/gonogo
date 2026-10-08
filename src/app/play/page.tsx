@@ -1,18 +1,27 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { PADS, Shape } from "@/components/shapes"
 import { Podium } from "@/components/leaderboard"
+import { QuestionText } from "@/components/question-text"
+import { RoundReaction } from "@/components/round-reaction"
+import { StreakFire } from "@/components/streak-fire"
+import { StreakBadge } from "@/components/streak-badge"
 import { useGame } from "@/lib/use-poll"
+import { useRoundClock } from "@/lib/use-round-clock"
 import type { PublicGame } from "@/lib/types"
 
 export default function PlayPage() {
   const [pin, setPin] = useState<string | null>(null)
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
+  const [answerPending, setAnswerPending] = useState(false)
+  const [answerError, setAnswerError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Hydrate the browser's persisted player session after SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPin(localStorage.getItem("gonogo.pin"))
     setPlayerId(localStorage.getItem("gonogo.playerId"))
     setReady(true)
@@ -26,17 +35,26 @@ export default function PlayPage() {
 
   const pick = useCallback(
     async (choiceIndex: number) => {
-      if (!pin || !playerId || !game || game.phase !== "question") return
+      if (!pin || !playerId || !game || game.phase !== "question" || answerPending) return
       const nextChoice = game.yourChoiceIndex === choiceIndex ? null : choiceIndex
-      const response = await fetch(`/api/games/${pin}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, choiceIndex: nextChoice }),
-      })
-      const payload = await response.json()
-      if (response.ok) setGame(payload as PublicGame)
+      setAnswerPending(true)
+      setAnswerError(null)
+      try {
+        const response = await fetch(`/api/games/${pin}/answer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerId, choiceIndex: nextChoice, questionId: game.question?.id }),
+        })
+        const payload = await response.json()
+        if (response.ok) setGame(payload as PublicGame)
+        else setAnswerError(payload.error ?? "Réponse non transmise. Réessayez.")
+      } catch {
+        setAnswerError("Liaison sol indisponible. Réessayez votre réponse.")
+      } finally {
+        setAnswerPending(false)
+      }
     },
-    [pin, playerId, game, setGame],
+    [pin, playerId, game, setGame, answerPending],
   )
 
   useEffect(() => {
@@ -101,6 +119,7 @@ export default function PlayPage() {
         <p className="text-xl text-paper-dim">
           {game.you?.nickname} · {game.you?.score ?? 0} pts · place {rank || "—"}
         </p>
+        <StreakBadge streak={game.you?.bestStreak ?? 0} best />
         <Podium players={game.players} />
         <Link
           href="/"
@@ -117,38 +136,62 @@ export default function PlayPage() {
     )
   }
 
-  return <PlayQuestion game={game} onPick={pick} />
+  return <PlayQuestion key={game.question?.id} game={game} onPick={pick} pending={answerPending} error={answerError} />
 }
 
 function PlayQuestion({
   game,
   onPick,
+  pending,
+  error,
 }: {
   game: PublicGame
   onPick: (index: number) => void
+  pending: boolean
+  error: string | null
 }) {
-  const remaining = useRemaining(game)
+  const { questionRemaining: remaining, revealRemaining } = useRoundClock(game)
+  const revealing = game.phase === "reveal"
   const seconds = Math.ceil(remaining / 1000)
+  const revealSeconds = Math.ceil(revealRemaining / 1000)
   const question = game.question
   const timedOut = remaining <= 0
-  const locked = game.phase === "reveal" || timedOut
+  const locked = revealing || timedOut || pending
+  const streak = game.you?.streak ?? 0
 
   if (!question) return null
 
   return (
     <main className="min-h-dvh flex flex-col">
+      <StreakFire streak={streak} />
+      {revealing ? (
+        <RoundReaction
+          key={question.id}
+          questionId={question.id}
+          outcome={game.you?.lastCorrect ? "correct" : game.you?.answered ? "wrong" : "timeout"}
+          points={game.you?.lastPoints ?? 0}
+          streak={streak}
+          elapsedMs={Math.max(0, 10_000 - revealRemaining)}
+        />
+      ) : null}
       <header className="flex items-end justify-between px-4 pt-4 pb-2">
-        <p className="font-display text-2xl uppercase truncate max-w-[70%]">
-          {game.you?.nickname}
-        </p>
-        <p className={`font-display text-4xl tabular ${seconds <= 5 ? "text-nogo" : "text-go"}`}>
-          {String(Math.max(0, seconds)).padStart(2, "0")}
-        </p>
+        <div className="min-w-0 max-w-[70%] flex flex-col gap-1">
+          <p className="font-display text-2xl uppercase truncate">{game.you?.nickname}</p>
+          <StreakBadge streak={streak} />
+        </div>
+        <div className="text-right">
+          {revealing ? <p className="text-xs text-paper-dim">{game.revealPaused ? "En pause" : game.questionIndex + 1 === game.questionCount ? "Podium dans" : "Suite dans"}</p> : null}
+          <p className={`font-display text-4xl tabular ${!revealing && seconds <= 5 ? "text-nogo" : "text-go"}`}>
+            {String(Math.max(0, revealing ? revealSeconds : seconds)).padStart(2, "0")}
+          </p>
+        </div>
       </header>
       <div className="px-4 pb-3 flex flex-col gap-2">
-        <p className="text-sm leading-snug text-paper-dim">{question.context}</p>
-        <p className="text-base leading-snug text-paper font-semibold">{question.prompt}</p>
+        <p className="text-xs font-mono tabular text-paper-dim">{game.questionIndex + 1}/{game.questionCount} · {game.quizTitle}</p>
+        <p className="whitespace-pre-wrap text-sm leading-snug text-paper-dim"><QuestionText text={question.context} /></p>
+        <p className="text-base leading-snug text-paper font-semibold"><QuestionText text={question.prompt} /></p>
       </div>
+      {error && !revealing ? <p role="alert" className="px-4 pb-3 text-sm text-paper">{error}</p> : null}
       <div className="grid grid-cols-2 grid-rows-2 flex-1 gap-2 p-2">
         {question.choices.map((choice, index) => {
           const selected = game.yourChoiceIndex === index
@@ -159,8 +202,9 @@ function PlayQuestion({
               key={choice.text}
               type="button"
               disabled={locked}
+              aria-pressed={selected}
               onClick={() => onPick(index)}
-              className="flex flex-col items-start justify-between p-4 text-left disabled:cursor-default touch-manipulation"
+              className="min-w-0 min-h-40 flex flex-col items-start justify-between gap-4 p-4 text-left disabled:cursor-default touch-manipulation"
               style={{
                 background: PADS[index].bg,
                 color: PADS[index].fg,
@@ -170,15 +214,15 @@ function PlayQuestion({
             >
               <Shape index={index} className="size-10" />
               <span className="font-sans normal-case text-lg font-semibold leading-snug">
-                {choice.text}
+                <QuestionText text={choice.text} />
               </span>
             </button>
           )
         })}
       </div>
-      {game.phase === "reveal" ? (
+      {revealing ? (
         <div className="px-4 py-4 pb-10 flex flex-col gap-3">
-          <p
+          <p role="status"
             className={`text-center font-display text-3xl tracking-wide ${
               game.you?.lastCorrect ? "text-go" : "text-nogo"
             }`}
@@ -191,7 +235,7 @@ function PlayQuestion({
           </p>
           {question.explanation ? (
             <p className="text-sm leading-relaxed text-paper-dim text-left">
-              {question.explanation}
+              <QuestionText text={question.explanation} />
             </p>
           ) : null}
         </div>
@@ -204,17 +248,4 @@ function PlayQuestion({
       ) : null}
     </main>
   )
-}
-
-function useRemaining(game: PublicGame) {
-  const [now, setNow] = useState(() => Date.now())
-  const snapshot = useMemo(
-    () => ({ remaining: game.remainingMs, at: Date.now() }),
-    [game.remainingMs, game.questionStartedAt, game.phase],
-  )
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 200)
-    return () => window.clearInterval(id)
-  }, [])
-  return Math.max(0, snapshot.remaining - (now - snapshot.at))
 }

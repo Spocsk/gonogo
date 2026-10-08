@@ -5,7 +5,6 @@ import { getGame, saveGame, storageKind, withGameLock } from "@/lib/store"
 import type { Viewer } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
-export const preferredRegion = "fra1"
 
 type Ctx = { params: Promise<{ pin: string }> }
 
@@ -26,14 +25,26 @@ export async function GET(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Lien sol introuvable." }, { status: 404 })
   }
 
-  const live = tickGame(game)
-  if (live !== game && viewer.role === "host") {
-    await withGameLock(pin, async (current) => {
-      if (!current) return
-      const ticked = tickGame(current)
-      if (ticked !== current) await saveGame(ticked)
-    })
+  let live = game
+  let now = Date.now()
+  if (tickGame(game, now) !== game) {
+    try {
+      const updated = await withGameLock(pin, async (current) => {
+        if (!current) return null
+        now = Date.now()
+        const ticked = tickGame(current, now)
+        return ticked !== current ? await saveGame(ticked) : current
+      })
+      if (!updated) {
+        return NextResponse.json({ error: "Lien sol introuvable." }, { status: 404 })
+      }
+      live = updated
+    } catch {
+      return NextResponse.json({ error: "Synchronisation indisponible. Réessayez." }, { status: 503 })
+    }
   }
 
-  return NextResponse.json(toPublic(live, viewer, storageKind()))
+  return NextResponse.json(toPublic(live, viewer, storageKind(), now), {
+    headers: { "Cache-Control": "no-store" },
+  })
 }

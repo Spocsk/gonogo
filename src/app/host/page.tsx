@@ -3,11 +3,13 @@
 import { QRCodeSVG } from "qrcode.react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { FormEvent, useCallback, useEffect, useState } from "react"
 import { Frame, formatPin } from "@/components/frame"
 import { Leaderboard, Podium } from "@/components/leaderboard"
 import { PADS, Shape } from "@/components/shapes"
+import { QuestionText } from "@/components/question-text"
 import { useGame } from "@/lib/use-poll"
+import { useRoundClock } from "@/lib/use-round-clock"
 import type { PublicGame, QuizSummary } from "@/lib/types"
 
 const HOST_PIN = "gonogo.hostPin"
@@ -25,6 +27,7 @@ export default function HostPage() {
   const [token, setToken] = useState<string | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [actionPending, setActionPending] = useState(false)
   const [origin, setOrigin] = useState("")
   const [leaving, setLeaving] = useState(false)
   const [quizzes, setQuizzes] = useState<QuizSummary[] | null>(null)
@@ -46,6 +49,8 @@ export default function HostPage() {
   }, [setGame])
 
   useEffect(() => {
+    // Hydrate the browser origin after SSR; it is external browser state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrigin(window.location.origin)
   }, [])
 
@@ -122,6 +127,8 @@ export default function HostPage() {
     const existingPin = localStorage.getItem(HOST_PIN)
     const existingToken = localStorage.getItem(HOST_TOKEN)
     if (existingPin && existingToken) {
+      // Restore the persisted host session after authentication.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPin(existingPin)
       setToken(existingToken)
       return
@@ -143,26 +150,33 @@ export default function HostPage() {
   }, [error, pin, leaving, auth, lockConsole])
 
   const act = useCallback(
-    async (action: "start" | "reveal" | "next" | "selectQuiz", quizId?: string) => {
+    async (action: "start" | "reveal" | "next" | "selectQuiz" | "pauseReveal" | "resumeReveal", quizId?: string) => {
       if (!pin || !token) return
       setActionError(null)
-      const response = await fetch(`/api/games/${pin}/host`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostToken: token, action, quizId }),
-      })
-      const payload = await response.json()
-      if (response.status === 401) {
-        lockConsole()
-        return
+      setActionPending(true)
+      try {
+        const response = await fetch(`/api/games/${pin}/host`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hostToken: token, action, quizId, questionId: game?.question?.id }),
+        })
+        const payload = await response.json()
+        if (response.status === 401) {
+          lockConsole()
+          return
+        }
+        if (!response.ok) {
+          setActionError(payload.error ?? "Action refusée.")
+          return
+        }
+        setGame(payload as PublicGame)
+      } catch {
+        setActionError("Liaison sol indisponible. Réessayez l’action.")
+      } finally {
+        setActionPending(false)
       }
-      if (!response.ok) {
-        setActionError(payload.error ?? "Action refusée.")
-        return
-      }
-      setGame(payload as PublicGame)
     },
-    [pin, token, setGame, lockConsole],
+    [pin, token, setGame, lockConsole, game],
   )
 
   async function onUnlock(event: FormEvent) {
@@ -335,6 +349,8 @@ export default function HostPage() {
           game={game}
           onReveal={() => void act("reveal")}
           onNext={() => void act("next")}
+          onTogglePause={() => void act(game.revealPaused ? "resumeReveal" : "pauseReveal")}
+          pending={actionPending}
         />
       ) : null}
       {game.phase === "podium" ? (
@@ -422,7 +438,7 @@ function Lobby({
         {!quizzes ? (
           <p className="font-display text-xl uppercase text-paper-dim">Chargement des briefs…</p>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {quizzes.map((quiz) => {
               const active = quiz.id === game.quizId
               return (
@@ -463,26 +479,20 @@ function QuestionStage({
   game,
   onReveal,
   onNext,
+  onTogglePause,
+  pending,
 }: {
   game: PublicGame
   onReveal: () => void
   onNext: () => void
+  onTogglePause: () => void
+  pending: boolean
 }) {
   const question = game.question
-  const remaining = useRemaining(game)
-  const seconds = Math.ceil(remaining / 1000)
+  const { questionRemaining, revealRemaining } = useRoundClock(game)
+  const revealing = game.phase === "reveal"
+  const seconds = Math.ceil((revealing ? revealRemaining : questionRemaining) / 1000)
   const last = game.questionIndex + 1 >= game.questionCount
-  const revealSent = useRef(false)
-
-  useEffect(() => {
-    revealSent.current = false
-  }, [game.questionIndex])
-
-  useEffect(() => {
-    if (game.phase !== "question" || remaining > 0 || revealSent.current) return
-    revealSent.current = true
-    onReveal()
-  }, [game.phase, remaining, onReveal])
 
   if (!question) return null
 
@@ -492,17 +502,16 @@ function QuestionStage({
         <p className="font-mono tabular text-paper-dim">
           {question.day} · {game.questionIndex + 1}/{game.questionCount}
         </p>
-        <p
-          className={`font-display text-6xl tabular leading-none ${
-            seconds <= 5 ? "text-nogo" : "text-go"
-          }`}
-        >
-          {String(Math.max(0, seconds)).padStart(2, "0")}
-        </p>
+        <div className="flex items-center gap-3">
+          {revealing ? <span className="text-sm text-paper-dim">{game.revealPaused ? "Correction en pause" : last ? "Podium dans" : "Suite dans"}</span> : null}
+          <p className={`font-display text-6xl tabular leading-none ${!revealing && seconds <= 5 ? "text-nogo" : "text-go"}`}>
+            {String(Math.max(0, seconds)).padStart(2, "0")}
+          </p>
+        </div>
       </div>
-      <p className="max-w-5xl text-lg leading-relaxed text-paper-dim">{question.context}</p>
+      <p className="max-w-5xl whitespace-pre-wrap text-lg leading-relaxed text-paper-dim"><QuestionText text={question.context} /></p>
       <h2 className="font-display text-[clamp(1.8rem,4.2vw,3.4rem)] leading-[1.12] tracking-wide">
-        {question.prompt}
+        <QuestionText text={question.prompt} />
       </h2>
       <ol className="grid gap-3 md:grid-cols-2">
         {question.choices.map((choice, index) => {
@@ -523,7 +532,7 @@ function QuestionStage({
               <Shape index={index} className="size-8 shrink-0 mt-1" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <span className="text-xl leading-snug font-semibold">
-                  {choice.text}
+                  <QuestionText text={choice.text} />
                 </span>
                 {choice.count ? (
                   <span className="font-mono tabular text-sm">
@@ -538,7 +547,7 @@ function QuestionStage({
       {game.phase === "reveal" && question.explanation ? (
         <p className="max-w-5xl text-lg leading-relaxed text-paper">
           <span className="font-display uppercase tracking-wide text-go">Pourquoi · </span>
-          {question.explanation}
+          <QuestionText text={question.explanation} />
         </p>
       ) : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-4">
@@ -549,18 +558,20 @@ function QuestionStage({
           <button
             type="button"
             onClick={onReveal}
-            className="bg-paper text-ink font-display text-2xl uppercase px-6 py-3"
+            disabled={pending || questionRemaining <= 0}
+            className="bg-paper text-ink font-display text-2xl uppercase px-6 py-3 disabled:opacity-40"
           >
             Verdict
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={onNext}
-            className="bg-go text-ink font-display text-2xl uppercase px-6 py-3"
-          >
-            {last ? "Classement" : "Question suivante"}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={onTogglePause} disabled={pending || revealRemaining <= 0} className="bg-paper text-ink font-display text-2xl uppercase px-6 py-3 disabled:opacity-40">
+              {game.revealPaused ? "Reprendre" : "Pause correction"}
+            </button>
+            <button type="button" onClick={onNext} disabled={pending || revealRemaining <= 0} className="bg-go text-ink font-display text-2xl uppercase px-6 py-3 disabled:opacity-40">
+              {last ? "Classement" : "Question suivante"}
+            </button>
+          </div>
         )}
       </div>
       {game.phase === "reveal" ? (
@@ -568,19 +579,6 @@ function QuestionStage({
       ) : null}
     </section>
   )
-}
-
-function useRemaining(game: PublicGame) {
-  const [now, setNow] = useState(() => Date.now())
-  const snapshot = useMemo(
-    () => ({ remaining: game.remainingMs, at: Date.now() }),
-    [game.remainingMs, game.questionStartedAt, game.phase],
-  )
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 200)
-    return () => window.clearInterval(id)
-  }, [])
-  return Math.max(0, snapshot.remaining - (now - snapshot.at))
 }
 
 async function createSession(

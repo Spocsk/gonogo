@@ -12,8 +12,8 @@ export default function HomePage() {
           <span className="block text-go">NO-GO</span>
         </h1>
         <p className="mt-8 max-w-md text-lg text-paper-dim leading-relaxed">
-          Recap live React + TypeScript, Bachelor 2. Une question, quatre
-          réponses, un callsign. Jours 1 et 5 d’Orbital Command.
+          Quiz live React, Python et SQL, Bachelor 2. Une question, quatre
+          réponses, un callsign. À vous de donner le GO.
         </p>
       </section>
 

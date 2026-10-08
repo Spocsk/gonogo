@@ -21,9 +21,9 @@ const data = Chivo_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "GO/NO-GO · Recap React TypeScript",
+  title: "GO/NO-GO · Quiz live",
   description:
-    "Brief live Bachelor 2 : une question, quatre réponses, un callsign. Recap des jours 1 et 5, Orbital Command.",
+    "Quiz live Bachelor 2 : React et TypeScript, Python et FastAPI, SQL et objets programmables. Une question, quatre réponses, un callsign.",
 }
 
 export const viewport: Viewport = {

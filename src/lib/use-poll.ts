@@ -1,14 +1,29 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type SetStateAction } from "react"
 import type { PublicGame } from "./types"
 
 export function useGame(url: string | null, interval = 1600) {
-  const [game, setGame] = useState<PublicGame | null>(null)
+  const [game, updateGame] = useState<PublicGame | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // A slow poll must not restore a previous question after a host action.
+  const setGame = useCallback((value: SetStateAction<PublicGame | null>) => {
+    updateGame((current) => {
+      const incoming = typeof value === "function" ? value(current) : value
+      if (current && incoming && current.pin === incoming.pin) {
+        const currentRevision = current.revision ?? 0
+        const incomingRevision = incoming.revision ?? 0
+        if (incomingRevision < currentRevision || (incomingRevision === currentRevision && incoming.serverNow < current.serverNow)) return current
+      }
+      return incoming
+    })
+  }, [])
 
   useEffect(() => {
     if (!url) {
+      // Disconnecting from the external session clears its last snapshot.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGame(null)
       return
     }
@@ -48,7 +63,7 @@ export function useGame(url: string | null, interval = 1600) {
       window.clearInterval(id)
       document.removeEventListener("visibilitychange", onVisible)
     }
-  }, [url, interval])
+  }, [url, interval, setGame])
 
   return { game, error, setGame }
 }

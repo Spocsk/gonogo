@@ -44,11 +44,14 @@ export type Player = {
 
 export type Game = {
   pin: string
+  revision?: number
   hostToken: string
   createdAt: number
   phase: Phase
   questionIndex: number
   questionStartedAt: number | null
+  revealStartedAt?: number | null
+  revealPausedAt?: number | null
   players: Player[]
   quizId?: string | null
 }
@@ -74,12 +77,15 @@ export type PublicPlayer = {
   nickname: string
   score: number
   answered: boolean
+  streak: number
+  bestStreak: number
   lastCorrect?: boolean
   lastPoints?: number
 }
 
 export type PublicGame = {
   pin: string
+  revision: number
   phase: Phase
   questionIndex: number
   questionCount: number
@@ -87,6 +93,8 @@ export type PublicGame = {
   questionStartedAt: number | null
   serverNow: number
   remainingMs: number
+  revealRemainingMs: number
+  revealPaused: boolean
   players: PublicPlayer[]
   you: PublicPlayer | null
   yourChoiceIndex: number | null
