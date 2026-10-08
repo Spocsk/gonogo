@@ -158,8 +158,7 @@
 
 .media[data-ready="true"] { opacity: 1; }
 .encouragement { margin: 0; font-size: 1rem; line-height: 1.4; color: var(--light); }
-.attribution { display: flex; align-items: center; justify-content: center; min-height: 28px; }
-.attribution img { width: 150px; height: auto; }
+.attribution { display: flex; align-items: center; justify-content: center; min-height: 28px; color: #fff1bd; font-size: 12px; font-weight: 600; letter-spacing: .03em; }
 
 .skip {
   display: inline-flex;

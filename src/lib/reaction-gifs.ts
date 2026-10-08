@@ -4,7 +4,7 @@ export type ReactionGif = {
   url: string
   format: "mp4" | "gif"
   title: string
-  provider: "giphy"
+  provider: "klipy"
   sourceUrl: string
 }
 
@@ -21,12 +21,15 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 // Keep the provider's URLs, including query parameters, exactly as returned.
-function giphyUrl(value: unknown): string | null {
+function klipyUrl(value: unknown, media = true): string | null {
   if (typeof value !== "string") return null
   try {
     const url = new URL(value)
+    const hosts = media
+      ? ["static.klipy.com", "static1.klipy.com", "static2.klipy.com"]
+      : ["klipy.com", "www.klipy.com"]
     return url.protocol === "https:" && !url.username && !url.password && !url.port &&
-      (url.hostname === "giphy.com" || url.hostname.endsWith(".giphy.com"))
+      hosts.includes(url.hostname)
       ? value
       : null
   } catch {
@@ -35,24 +38,25 @@ function giphyUrl(value: unknown): string | null {
 }
 
 export function parseReactionGif(payload: unknown): ReactionGif | null {
-  const data = record(payload)?.data
-  const gif = Array.isArray(data) ? record(data[0]) : null
-  const images = record(gif?.images)
-  if (!gif || !images) return null
+  const results = record(payload)?.results
+  const gif = Array.isArray(results) ? record(results[0]) : null
+  const formats = record(gif?.media_formats)
+  if (!gif || gif.type === "ad" || !formats) return null
 
-  // The small MP4 is capped at 200 kB by GIPHY; no image optimizer or media proxy.
-  const mp4 = giphyUrl(record(images.downsized_small)?.mp4) ??
-    giphyUrl(record(images.fixed_height)?.mp4)
-  const url = mp4 ?? giphyUrl(record(images.downsized)?.url) ??
-    giphyUrl(record(images.fixed_height)?.url)
+  // Prefer the compact video for a short reaction; no optimizer or media proxy.
+  const mp4 = klipyUrl(record(formats.tinymp4)?.url) ??
+    klipyUrl(record(formats.mp4)?.url)
+  const url = mp4 ?? klipyUrl(record(formats.tinygif)?.url) ??
+    klipyUrl(record(formats.gif)?.url)
   if (!url) return null
 
   return {
     url,
     format: mp4 ? "mp4" : "gif",
-    title: typeof gif.title === "string" ? gif.title : "GIF de réaction",
-    provider: "giphy",
-    sourceUrl: giphyUrl(gif.url) ?? "https://giphy.com/",
+    title: typeof gif.content_description === "string" ? gif.content_description :
+      typeof gif.title === "string" ? gif.title : "GIF de réaction",
+    provider: "klipy",
+    sourceUrl: klipyUrl(gif.itemurl, false) ?? klipyUrl(gif.url, false) ?? "https://klipy.com/",
   }
 }
 
@@ -61,24 +65,28 @@ export async function fetchReactionGif(
   questionId: string,
   signal: AbortSignal,
 ): Promise<ReactionGif | null> {
-  const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY?.trim()
+  const apiKey = process.env.NEXT_PUBLIC_KLIPY_API_KEY?.trim()
   if (!apiKey || signal.aborted) return null
 
   let hash = 0
   for (const character of questionId) hash = (hash * 31 + character.charCodeAt(0)) >>> 0
   const terms = SEARCH_TERMS[outcome]
   const params = new URLSearchParams({
-    api_key: apiKey,
+    key: apiKey,
     q: terms[hash % terms.length],
-    rating: "g",
-    lang: "en",
+    contentfilter: "high",
+    country: "FR",
+    locale: "fr_FR",
+    media_filter: "tinymp4,mp4,tinygif,gif",
+    random: "true",
     limit: "1",
   })
 
   try {
-    // GIPHY requires API calls and media requests directly from the browser.
+    // KLIPY requires direct browser requests and intact media URLs. Request one
+    // result rather than truncating a result list; no student data is included.
     // This response is used only for the current reaction, never persisted.
-    const response = await fetch(`https://api.giphy.com/v1/gifs/search?${params}`, {
+    const response = await fetch(`https://api.klipy.com/v2/search?${params}`, {
       signal: AbortSignal.any([signal, AbortSignal.timeout(1500)]),
       cache: "no-store",
       credentials: "omit",

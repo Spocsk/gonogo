@@ -129,7 +129,7 @@ function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: Round
               tabIndex={-1}
             />
           ) : (
-            // Direct, unoptimized media preserves GIPHY's URL and avoids an optimizer proxy.
+            // Direct, unoptimized media preserves KLIPY's URL and avoids an optimizer proxy.
             <Image
               className={styles.media}
               data-ready={mediaReady}
@@ -149,7 +149,7 @@ function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: Round
         </p>
         {showMedia && mediaReady ? (
           <a href={gif.sourceUrl} target="_blank" rel="noopener noreferrer" className={styles.attribution}>
-            <Image src="/giphy/powered-by-giphy.png" width={200} height={26} alt="Powered by GIPHY" unoptimized />
+            Powered by KLIPY
           </a>
         ) : null}
         <button type="button" className={styles.skip} onClick={() => setDismissed(true)}>
