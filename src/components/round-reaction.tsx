@@ -20,26 +20,52 @@ const COPY = {
   timeout: { heading: "Trop tard !", description: "Temps écoulé", encouragement: "On se rattrape au prochain round." },
 } as const
 
+const MEDIA_LOAD_WINDOW_MS = 3000
+const REACTION_DISPLAY_MS = 5000
+const REACTION_MAX_MS = MEDIA_LOAD_WINDOW_MS + REACTION_DISPLAY_MS
+
 export function RoundReaction(props: RoundReactionProps) {
-  if (props.elapsedMs >= 3000) return null
+  if (props.elapsedMs >= REACTION_MAX_MS) return null
   return <ReactionScene key={props.questionId} {...props} />
 }
 
 function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: RoundReactionProps) {
   const { reducedMotion, visible } = useMotionPreferences()
-  const [dismissed, setDismissed] = useState(false)
+  // Do not replay a reaction for someone joining an already-revealed round.
+  const [dismissed, setDismissed] = useState(() => elapsedMs >= MEDIA_LOAD_WINDOW_MS)
   const [gif, setGif] = useState<ReactionGif | null>(null)
-  const [mediaReady, setMediaReady] = useState(false)
-  const [mediaFailed, setMediaFailed] = useState(false)
+  const [mediaStatus, setMediaStatus] = useState<"loading" | "playing" | "fallback">("loading")
   const initialElapsed = useRef(elapsedMs)
+  const mountedAt = useRef<number | null>(null)
+  const displayStartedAt = useRef<number | null>(null)
   const attempted = useRef(false)
   const copy = COPY[outcome]
 
   useEffect(() => {
-    // This also expires during a formateur pause: the spectacle never traps the correction.
-    const timer = window.setTimeout(() => setDismissed(true), Math.max(0, 3000 - initialElapsed.current))
+    if (dismissed) return
+    // Both deadlines keep running during a formateur pause, and survive effect replay.
+    mountedAt.current ??= performance.now()
+    const age = initialElapsed.current + performance.now() - mountedAt.current
+    const stop = window.setTimeout(() => setDismissed(true), Math.max(0, REACTION_MAX_MS - age))
+    const loading = window.setTimeout(() => {
+      // Never flash a late GIF for just the tail of the reaction window.
+      setMediaStatus(current => current === "loading" ? "fallback" : current)
+    }, Math.max(0, MEDIA_LOAD_WINDOW_MS - age))
+    return () => {
+      window.clearTimeout(stop)
+      window.clearTimeout(loading)
+    }
+  }, [dismissed])
+
+  useEffect(() => {
+    if (dismissed || !visible || (mediaStatus === "loading" && !reducedMotion)) return
+    // Start only once the media actually plays, or when local effects take over.
+    // Buffering, repeated playing events and tab changes cannot restart the clock.
+    displayStartedAt.current ??= performance.now()
+    const remaining = REACTION_DISPLAY_MS - (performance.now() - displayStartedAt.current)
+    const timer = window.setTimeout(() => setDismissed(true), Math.max(0, remaining))
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [mediaStatus, reducedMotion, visible, dismissed])
 
   useEffect(() => {
     if (!visible || reducedMotion || dismissed || attempted.current) return
@@ -50,7 +76,10 @@ function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: Round
       if (controller.signal.aborted || attempted.current) return
       attempted.current = true
       const result = await fetchReactionGif(outcome, questionId, controller.signal)
-      if (!controller.signal.aborted) setGif(result)
+      if (!controller.signal.aborted) {
+        setGif(result)
+        if (!result) setMediaStatus(current => current === "loading" ? "fallback" : current)
+      }
     })
     return () => controller.abort()
   }, [questionId, outcome, visible, reducedMotion, dismissed])
@@ -65,7 +94,15 @@ function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: Round
 
   if (dismissed || !visible) return null
 
-  const showMedia = gif && !mediaFailed && !reducedMotion
+  const mediaReady = mediaStatus === "playing"
+  const showMedia = gif && mediaStatus !== "fallback" && !reducedMotion
+
+  function onMediaReady() {
+    const age = initialElapsed.current + performance.now() - (mountedAt.current ?? performance.now())
+    setMediaStatus(current => current === "loading"
+      ? age < MEDIA_LOAD_WINDOW_MS ? "playing" : "fallback"
+      : current)
+  }
 
   return (
     <div className={styles.reaction} data-outcome={outcome} data-quiet={reducedMotion}>
@@ -123,8 +160,8 @@ function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: Round
               playsInline
               loop
               preload="auto"
-              onLoadedData={() => setMediaReady(true)}
-              onError={() => setMediaFailed(true)}
+              onPlaying={onMediaReady}
+              onError={() => setMediaStatus("fallback")}
               disablePictureInPicture
               tabIndex={-1}
             />
@@ -138,8 +175,8 @@ function ReactionScene({ questionId, outcome, points, streak, elapsedMs }: Round
               fill
               unoptimized
               sizes="(max-width: 640px) 88vw, 480px"
-              onLoad={() => setMediaReady(true)}
-              onError={() => setMediaFailed(true)}
+              onLoad={onMediaReady}
+              onError={() => setMediaStatus("fallback")}
             />
           ) : null}
         </div>

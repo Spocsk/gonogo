@@ -10,7 +10,7 @@ Trois briefs sont disponibles dans la console formateur :
 
 Après chaque question, le verdict et le corrigé restent affichés pendant **10 secondes**. La question suivante démarre automatiquement ; après la dernière, le podium s’affiche. Le formateur peut avancer immédiatement, mettre la correction en pause et la reprendre. Les horloges sont synchronisées par le serveur ; les transitions sont persistées dès qu’un joueur ou le formateur consulte la session.
 
-Chaque joueur reçoit une grande réaction visuelle au verdict pendant au maximum 3 secondes, avec un bouton pour voir directement le corrigé. Les bonnes réponses consécutives alimentent une série : braises à 2, flammes à 3, feu renforcé à 5 et intensité maximale à 8. Une erreur ou une absence de réponse coupe la série. La meilleure série apparaît sur l’écran final. Le score ne reçoit pas de bonus de série.
+Chaque joueur reçoit une grande réaction visuelle au verdict. Le GIF reste visible **5 secondes à partir de sa lecture effective** (ou du chargement pour un GIF image), avec un bouton pour voir directement le corrigé. Le chargement dispose des 3 premières secondes du verdict ; au-delà, les effets locaux prennent le relais pour éviter un GIF fugace. La réaction entière s’arrête au plus tard après **8 secondes**, même pendant une pause du formateur, afin de laisser du temps au corrigé avant l’avancement automatique à 10 secondes. Les bonnes réponses consécutives alimentent une série : braises à 2, flammes à 3, feu renforcé à 5 et intensité maximale à 8. Une erreur ou une absence de réponse coupe la série. La meilleure série apparaît sur l’écran final. Le score ne reçoit pas de bonus de série.
 
 ## Local
 
