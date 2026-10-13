@@ -1,5 +1,6 @@
 .fire {
-  --height: 32px;
+  --height: 8px;
+  --side-width: calc(var(--height) * 0.65);
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -7,11 +8,19 @@
   pointer-events: none;
   contain: strict;
   opacity: 0.8;
+  /* Keep every layer, including the glow and drifting embers, at the edges. */
+  mask-image:
+    linear-gradient(to bottom,
+      #000 var(--height), transparent var(--height),
+      transparent calc(100% - var(--height)), #000 calc(100% - var(--height))),
+    linear-gradient(to right,
+      #000 var(--side-width), transparent var(--side-width),
+      transparent calc(100% - var(--side-width)), #000 calc(100% - var(--side-width)));
 }
 
-.fire[data-level="1"] { --height: 12px; opacity: 0.6; }
-.fire[data-level="3"] { --height: 48px; opacity: 0.9; }
-.fire[data-level="4"] { --height: 66px; opacity: 1; }
+.fire[data-level="1"] { --height: 6px; opacity: 0.6; }
+.fire[data-level="3"] { --height: 10px; opacity: 0.9; }
+.fire[data-level="4"] { --height: 12px; opacity: 1; }
 
 .edgeGlow {
   position: absolute;
@@ -27,8 +36,8 @@
 
 .bottom { bottom: 0; left: 0; right: 0; height: var(--height); }
 .top { top: 0; left: 0; right: 0; height: var(--height); transform: rotate(180deg); opacity: 0.55; }
-.left { top: 0; bottom: 0; left: 0; width: calc(var(--height) * 0.65); }
-.right { top: 0; bottom: 0; right: 0; width: calc(var(--height) * 0.65); }
+.left { top: 0; bottom: 0; left: 0; width: var(--side-width); }
+.right { top: 0; bottom: 0; right: 0; width: var(--side-width); }
 
 .flame,
 .core {
@@ -83,8 +92,10 @@
 .fire[data-paused="true"] .embers { display: none; }
 
 @media (max-width: 640px) {
-  .fire[data-level="3"] { --height: 36px; }
-  .fire[data-level="4"] { --height: 46px; }
+  .fire { --height: 6px; }
+  .fire[data-level="1"] { --height: 4px; }
+  .fire[data-level="3"] { --height: 8px; }
+  .fire[data-level="4"] { --height: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
