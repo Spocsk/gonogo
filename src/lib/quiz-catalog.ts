@@ -23,7 +23,7 @@ export const QUIZZES: Quiz[] = [
   {
     id: "sql-objects",
     title: "Le Cabinet du Quai",
-    subtitle: "SQL · Objets programmables · fonctions, procédures et triggers",
+    subtitle: "SQL · Objets programmables, analyse et CTE",
     questions: SQL_OBJECTS_QUESTIONS,
   },
 ]

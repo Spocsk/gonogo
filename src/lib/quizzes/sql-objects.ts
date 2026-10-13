@@ -20,23 +20,6 @@ export const SQL_OBJECTS_QUESTIONS: Question[] = [
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "sql-objects-returns-contract",
-    day: "J1",
-    context:
-      "En-tête d’une fonction : `CREATE FUNCTION demo_ttc(p_ht numeric, p_taux numeric) RETURNS numeric`. Le corps utilise les deux paramètres.",
-    prompt: "Que précise `RETURNS numeric` ?",
-    choices: [
-      "Le nombre de paramètres obligatoires",
-      "La table où le résultat sera enregistré",
-      "Le type du résultat renvoyé par la fonction",
-      "La valeur du taux de TVA par défaut",
-    ],
-    correctIndex: 2,
-    explanation:
-      "`p_ht` et `p_taux` sont les entrées, toutes deux de type numeric. `RETURNS numeric` annonce le type de sortie ; cela ne crée aucune colonne et ne stocke pas automatiquement le résultat.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
     id: "sql-objects-select-call",
     day: "J1",
     context:
@@ -51,69 +34,6 @@ export const SQL_OBJECTS_QUESTIONS: Question[] = [
     correctIndex: 1,
     explanation:
       "Une fonction scalaire se place dans une expression, ici dans SELECT. CALL sert aux procédures. Le nom seul n’appelle pas la fonction : ses arguments doivent être transmis entre parenthèses.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-signature-overload",
-    day: "J1",
-    context:
-      "Dans le même schéma, le cabinet définit `demo_libelle(integer)` et `demo_libelle(text)`. Les deux objets portent le même nom.",
-    prompt: "Pourquoi ces deux fonctions peuvent-elles coexister ?",
-    choices: [
-      "Les noms des paramètres suffisent à distinguer deux fonctions",
-      "Le type de retour permet toujours de départager deux signatures identiques",
-      "PostgreSQL choisit systématiquement la dernière fonction créée",
-      "Leurs types de paramètres d’entrée diffèrent : c’est une surcharge",
-    ],
-    correctIndex: 3,
-    explanation:
-      "La signature distingue les fonctions par leur nom et leurs types d’entrée. Changer seulement le nom d’un paramètre ou le type de retour ne crée pas une surcharge avec les mêmes types d’entrée.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-demo-ttc",
-    day: "J1",
-    context:
-      "Le corps SQL de `demo_ttc(p_ht numeric, p_taux numeric)` est `SELECT p_ht * (1 + p_taux);`. On exécute `SELECT demo_ttc(50, 0.20);`.",
-    prompt: "Quel montant numérique est renvoyé ?",
-    choices: ["50", "60", "10", "70"],
-    correctIndex: 1,
-    explanation:
-      "50 × (1 + 0.20) = 60. Le taux 0.20 ajoute 20 % au montant HT. 10 est seulement le montant de TVA, pas le TTC.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-strict-null",
-    day: "J1",
-    context:
-      "`demo_ttc(numeric, numeric)` renvoie une valeur numeric et est déclarée `STRICT`. On l’appelle avec `SELECT demo_ttc(NULL, 0.20);`.",
-    prompt: "Que se passe-t-il pour cet appel ?",
-    choices: [
-      "Le résultat est NULL sans exécuter le corps de la fonction",
-      "NULL devient automatiquement 0, donc le résultat est 0",
-      "STRICT lève toujours une exception si un argument est NULL",
-      "Le corps s’exécute et peut remplacer NULL par une valeur",
-    ],
-    correctIndex: 0,
-    explanation:
-      "Pour une fonction STRICT, un argument NULL suffit à produire NULL sans exécuter le corps. Cette option ne convertit pas NULL en zéro et ne doit pas être confondue avec SELECT INTO STRICT.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-volatility",
-    day: "J1",
-    context:
-      "Trois fonctions : A calcule uniquement avec ses arguments ; B compte les lignes de personne ; C renvoie un tirage aléatoire.",
-    prompt: "Quelles catégories de volatilité conviennent à A, B et C ?",
-    choices: [
-      "A VOLATILE ; B IMMUTABLE ; C STABLE",
-      "A STABLE ; B VOLATILE ; C IMMUTABLE",
-      "A IMMUTABLE ; B IMMUTABLE ; C IMMUTABLE",
-      "A IMMUTABLE ; B STABLE ; C VOLATILE",
-    ],
-    correctIndex: 3,
-    explanation:
-      "IMMUTABLE promet le même résultat pour les mêmes arguments. STABLE permet une lecture dont le résultat reste stable dans une instruction SQL. VOLATILE convient à un résultat pouvant varier entre appels, comme un tirage aléatoire.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -148,23 +68,6 @@ export const SQL_OBJECTS_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "DECLARE introduit la variable locale. Dans PL/pgSQL, SELECT INTO range le résultat dans cette variable. RAISE NOTICE affiche un message d’information ; aucune écriture n’est présente ici.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-if-return",
-    day: "J1",
-    context:
-      "Corps de `demo_charge(h numeric) RETURNS text` :\n`IF h >= 6 THEN`\n`  RETURN 'longue';`\n`ELSE`\n`  RETURN 'courte';`\n`END IF;`\nOn appelle la fonction avec h = 7.",
-    prompt: "Quelle valeur la fonction renvoie-t-elle ?",
-    choices: [
-      "`'courte'`, car la branche ELSE est toujours exécutée en dernier",
-      "NULL, car aucun RETURN n’est placé après END IF",
-      "`'longue'` puis `'courte'`, car les deux RETURN s’enchaînent",
-      "`'longue'`, puis l’exécution de la fonction se termine",
-    ],
-    correctIndex: 3,
-    explanation:
-      "7 >= 6 est vrai : la fonction entre dans la première branche. RETURN renvoie 'longue' et termine cet appel. ELSE n’est donc pas exécuté.",
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
@@ -236,23 +139,6 @@ export const SQL_OBJECTS_QUESTIONS: Question[] = [
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "sql-objects-before-after",
-    day: "J1",
-    context:
-      "Le cabinet nettoie piece avec un BEFORE et audite temoignage avec un AFTER. Ces triggers ordinaires ne sont pas différés.",
-    prompt: "Que signifie `AFTER` ici ?",
-    choices: [
-      "Après le COMMIT, dans une nouvelle transaction indépendante",
-      "Après la fermeture de la session SQL",
-      "Après l’opération concernée, mais encore dans la même transaction",
-      "Avant l’écriture, avec la possibilité de réécrire NEW pour cette insertion",
-    ],
-    correctIndex: 2,
-    explanation:
-      "AFTER ne signifie pas « après COMMIT ». Le trigger observe l’opération effectuée dans la transaction en cours. BEFORE sert notamment à préparer la ligne avant son écriture.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
     id: "sql-objects-old-new",
     day: "J1",
     context:
@@ -270,57 +156,6 @@ export const SQL_OBJECTS_QUESTIONS: Question[] = [
     timeLimitMs: TIME_LIMIT_MS,
   },
   {
-    id: "sql-objects-trim-return-new",
-    day: "J1",
-    context:
-      "Trigger `BEFORE INSERT FOR EACH ROW` sur piece :\n`NEW.description := trim(NEW.description);`\n`RETURN NEW;`\nLa description envoyée est `' loupe '`.",
-    prompt: "Quelle description est proposée à l’insertion ?",
-    choices: [
-      "NULL, car RETURN NEW annule toute insertion",
-      "`'loupe'`, sans les espaces aux extrémités",
-      "`' loupe '`, car un BEFORE ne peut jamais changer NEW",
-      "La description de la pièce précédente, lue dans OLD",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Le BEFORE modifie NEW puis renvoie cette ligne avec RETURN NEW. trim retire les espaces aux extrémités. OLD n’est pas la pièce précédente : il n’y a pas d’ancienne version de cette ligne lors d’un INSERT.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-audit-transaction",
-    day: "J1",
-    context:
-      "Un témoignage lié à l’affaire 3 est inséré. Son trigger AFTER INSERT exécute `INSERT INTO journal(affaire_id, action) VALUES (NEW.affaire_id, 'temoignage_ajoute');`.",
-    prompt: "Quelle trace est créée et par quel mécanisme ?",
-    choices: [
-      "Une trace pour l’affaire 3, seulement après un CALL manuel de l’audit",
-      "Une trace pour l’affaire 3, automatiquement dans une transaction autonome",
-      "Une trace (3, 'temoignage_ajoute'), automatiquement dans la même transaction",
-      "Une trace pour l’identifiant du témoignage, car NEW.affaire_id change de sens",
-    ],
-    correctIndex: 2,
-    explanation:
-      "Le trigger écrit automatiquement l’affaire 3 et l’action 'temoignage_ajoute' dans journal. NEW.affaire_id reste l’identifiant de l’affaire liée. L’audit participe à la même transaction que l’insertion du témoignage.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
-    id: "sql-objects-update-delta",
-    day: "J1",
-    context:
-      "Un trigger de ligne sur UPDATE de vacation reçoit `OLD.heures = 3` et `NEW.heures = 5`. Le journal utilise `NEW.heures - OLD.heures`.",
-    prompt: "Quelle variation d’heures est enregistrée ?",
-    choices: [
-      "+2 heures, en comparant la nouvelle version à l’ancienne",
-      "-2 heures, car OLD désigne la valeur après UPDATE",
-      "+5 heures, car NEW contient uniquement la différence",
-      "+8 heures, car les deux versions doivent être additionnées",
-    ],
-    correctIndex: 0,
-    explanation:
-      "NEW contient 5, OLD contient 3 : 5 − 3 = +2. Les deux versions permettent d’auditer le changement. NEW.heures est la nouvelle valeur complète, pas le delta.",
-    timeLimitMs: TIME_LIMIT_MS,
-  },
-  {
     id: "sql-objects-row-statement",
     day: "J1",
     context:
@@ -335,6 +170,176 @@ export const SQL_OBJECTS_QUESTIONS: Question[] = [
     correctIndex: 3,
     explanation:
       "FOR EACH ROW s’exécute pour chaque ligne touchée : 3 puis 0. FOR EACH STATEMENT s’exécute une fois par instruction correspondante, même si celle-ci ne modifie aucune ligne : 1 puis 1.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-grain-window",
+    day: "J1",
+    context:
+      "Le cabinet veut afficher chaque vacation avec le total d’heures de la personne. Il faut garder une ligne par vacation.",
+    prompt: "Quel choix conserve ce niveau de détail ?",
+    choices: [
+      "`GROUP BY personne_id`, qui produit une ligne par personne",
+      "`SUM(heures) OVER (PARTITION BY personne_id)`, qui garde les vacations et ajoute leur total",
+      "`HAVING personne_id`, qui duplique chaque vacation",
+      "`COUNT(*)`, qui ajoute le total d’heures à chaque ligne",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Une fonction de fenêtre calcule une valeur sur les lignes de la partition sans les regrouper : chaque vacation reste visible. GROUP BY réduirait le résultat à une ligne par personne.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-where-having",
+    day: "J1",
+    context:
+      "Le cabinet veut garder les personnes dont le total de vacations dépasse 15 heures. Le seuil porte sur la somme par personne.",
+    prompt: "Où placer ce filtre après `GROUP BY personne_id` ?",
+    choices: [
+      "Dans `WHERE SUM(heures) > 15`, avant la formation des groupes",
+      "Dans `HAVING SUM(heures) > 15`, après l’agrégation",
+      "Dans `ORDER BY SUM(heures) > 15`, qui retire les groupes",
+      "Dans `LIMIT 15`, qui teste le total de chaque groupe",
+    ],
+    correctIndex: 1,
+    explanation:
+      "WHERE sélectionne les lignes avant l’agrégation. HAVING teste les groupes déjà formés, donc il convient à un seuil portant sur SUM(heures).",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-count-null",
+    day: "J1",
+    context:
+      "La table affaire contient 10 affaires, dont 4 avec `clos_at` renseigné et 6 avec `clos_at = NULL`.",
+    prompt: "Que renvoient `COUNT(*)` et `COUNT(clos_at)` ?",
+    choices: [
+      "10 et 4",
+      "4 et 10",
+      "10 et 10",
+      "4 et 4",
+    ],
+    correctIndex: 0,
+    explanation:
+      "COUNT(*) compte les lignes, y compris celles dont clos_at est NULL. COUNT(clos_at) compte seulement les valeurs non NULL : ici 4 dates de clôture.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-left-join-count",
+    day: "J1",
+    context:
+      "Une requête part de affaire et fait un LEFT JOIN vers vacation. Une affaire sans vacation doit tout de même apparaître avec un total égal à zéro.",
+    prompt: "Quel comptage évite de compter la ligne préservée par le LEFT JOIN comme une vacation ?",
+    choices: [
+      "`COUNT(*)`, car il ignore automatiquement les lignes sans correspondance",
+      "`COUNT(v.id)`, car l’identifiant de vacation vaut NULL sans correspondance",
+      "`COUNT(affaire.id)`, car il compte les vacations jointes",
+      "`COUNT(NULL)`, car il renvoie une vacation par affaire",
+    ],
+    correctIndex: 1,
+    explanation:
+      "LEFT JOIN garde une ligne pour l’affaire même sans vacation. Dans ce cas v.id vaut NULL ; COUNT(v.id) ne la compte donc pas. COUNT(*) compterait cette ligne préservée.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-row-number-order",
+    day: "J1",
+    context:
+      "Deux vacations d’une même personne ont la même date. La requête utilise `ROW_NUMBER() OVER (PARTITION BY personne_id ORDER BY date_jour)` pour les numéroter.",
+    prompt: "Comment rendre leur numérotation stable ?",
+    choices: [
+      "Ajouter `id` comme critère de départage dans l’ORDER BY de la fenêtre",
+      "Ajouter `id` dans un ORDER BY final seulement",
+      "Remplacer ROW_NUMBER par COUNT(*)",
+      "Ajouter HAVING date_jour pour supprimer l’égalité",
+    ],
+    correctIndex: 0,
+    explanation:
+      "Si plusieurs lignes partagent date_jour, leur ordre relatif n’est pas déterminé par ce seul critère. Ajouter une clé unique comme id dans l’ORDER BY de la fenêtre rend les numéros reproductibles.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-rank-ties",
+    day: "J1",
+    context:
+      "Les heures des vacations triées par ordre décroissant sont 8, 7, 6, 6, 5. On calcule `RANK()` et `DENSE_RANK()` sur ces heures.",
+    prompt: "Quels rangs reçoivent les deux vacations à 6 heures ?",
+    choices: [
+      "RANK : 3 et 4 ; DENSE_RANK : 3 et 4",
+      "RANK : 3 et 3 ; DENSE_RANK : 3 et 3",
+      "RANK : 3 et 3 ; DENSE_RANK : 4 et 4",
+      "RANK : 4 et 4 ; DENSE_RANK : 3 et 3",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Les deux valeurs égales partagent le rang 3 avec les deux fonctions. RANK laisse ensuite un saut (la valeur suivante reçoit 5), tandis que DENSE_RANK ne saute pas (elle reçoit 4).",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-lag-previous",
+    day: "J1",
+    context:
+      "Pour une personne, les vacations sont ordonnées par date_jour puis id. `LAG(heures)` lit la valeur de la ligne précédente dans cet ordre.",
+    prompt: "Que vaut LAG sur la première vacation de cette partition ?",
+    choices: [
+      "0, car aucune vacation antérieure n’a été enregistrée",
+      "NULL, car aucune ligne précédente n’existe dans la partition",
+      "Les heures de la veille au calendrier, même sans vacation ce jour-là",
+      "Le total des heures de la personne",
+    ],
+    correctIndex: 1,
+    explanation:
+      "LAG suit l’ordre défini par la fenêtre et ne trouve pas de ligne précédente pour la première ligne : la valeur est NULL par défaut. Cette ligne n’est pas nécessairement la veille au calendrier.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-window-rows-frame",
+    day: "J1",
+    context:
+      "Le cabinet veut un cumul qui avance vacation par vacation, même lorsque plusieurs vacations ont le même nombre d’heures. La fenêtre est ordonnée par heures.",
+    prompt: "Quel choix exprime une progression ligne par ligne et un ordre déterministe ?",
+    choices: [
+      "`ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`, avec `ORDER BY heures, id`",
+      "Le cadre par défaut avec `ORDER BY heures`, qui sépare toujours les valeurs égales",
+      "`PARTITION BY heures`, qui ordonne les vacations par date",
+      "`HAVING SUM(heures)`, qui construit un cadre de fenêtre",
+    ],
+    correctIndex: 0,
+    explanation:
+      "ROWS explicite un cadre qui progresse ligne par ligne. Ajouter id après heures départage les ex æquo. Le cadre par défaut avec ORDER BY inclut les pairs et peut donc donner le même cumul aux lignes de même valeur.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-cte-window-filter",
+    day: "J1",
+    context:
+      "Le cabinet veut sélectionner la vacation la plus longue de chaque personne. Le rang est calculé avec ROW_NUMBER dans chaque partition, puis il faut garder `numero = 1`.",
+    prompt: "Pourquoi calculer le numéro dans une CTE puis filtrer dans la requête principale ?",
+    choices: [
+      "Une fonction de fenêtre peut être utilisée directement dans WHERE",
+      "WHERE s’exécute avant les fenêtres ; la requête extérieure peut filtrer la colonne calculée",
+      "Une CTE rend le rang permanent dans une table",
+      "La CTE fait ignorer les autres vacations lors du classement",
+    ],
+    correctIndex: 1,
+    explanation:
+      "WHERE intervient avant le calcul des fonctions de fenêtre, donc il ne peut pas filtrer leur résultat dans la même sélection. La CTE calcule le numéro sur les vacations, puis la requête principale conserve numero = 1.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "sql-analytics-cte-scope",
+    day: "J1",
+    context:
+      "Une requête commence par `WITH extrait AS (SELECT id FROM affaire) SELECT id FROM extrait;`. Ensuite, une nouvelle instruction SQL tente `SELECT * FROM extrait;`.",
+    prompt: "Que se passe-t-il lors de la deuxième instruction ?",
+    choices: [
+      "Elle relit la CTE, qui reste disponible pendant la session",
+      "Elle réussit si la première instruction a renvoyé au moins une ligne",
+      "Elle échoue : le nom de la CTE n’existe que pendant l’instruction qui suit WITH",
+      "Elle crée une vue temporaire nommée extrait",
+    ],
+    correctIndex: 2,
+    explanation:
+      "Une CTE nomme un résultat intermédiaire pour une seule instruction. Elle ne crée ni table ni vue persistante ; la seconde instruction ne connaît donc pas extrait.",
     timeLimitMs: TIME_LIMIT_MS,
   },
 ]
