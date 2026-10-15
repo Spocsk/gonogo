@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { joinPlayer, tickGame, toPublic } from "@/lib/game"
+import { commitGame } from "@/lib/exam-results"
 import { saveGame, storageKind, withGameLock } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
@@ -20,7 +21,7 @@ export async function POST(request: Request, ctx: Ctx) {
       if (!game) return { status: 404 as const, error: "Lien sol introuvable." }
       const now = Date.now()
       let live = tickGame(game, now)
-      if (live !== game) live = await saveGame(live)
+      if (live !== game) live = await commitGame(live, now)
       const { game: next, player } = joinPlayer(live, body.nickname ?? "")
       const stored = await saveGame(next)
       return {

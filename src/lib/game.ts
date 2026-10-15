@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "crypto"
-import { DEFAULT_QUIZ_ID, getQuiz } from "./quiz-catalog"
+import { EXAM_COOLDOWN_MS } from "./exam-timing"
+import { DEFAULT_QUIZ_ID, getQuiz, quizMode } from "./quiz-catalog"
 import { remainingMs, scoreAnswer } from "./scoring"
-import type { Game, Player, Question, Viewer, PublicGame, PublicPlayer } from "./types"
+import type { Game, Player, Question, QuizMode, Viewer, PublicGame, PublicPlayer } from "./types"
 
 export const REVEAL_DURATION_MS = 10_000
 
@@ -37,12 +38,29 @@ export function questionsFor(game: Game): Question[] {
   return getQuiz(id)?.questions ?? []
 }
 
-export function normalizeNickname(raw: string): string {
-  return raw.trim().replace(/\s+/g, " ").slice(0, 18)
+export function modeOf(game: Game): QuizMode {
+  const id = quizIdOf(game)
+  return id ? quizMode(getQuiz(id)) : "live"
+}
+
+export const NICKNAME_MAX = 18
+export const FULL_NAME_MAX = 40
+
+export function normalizeNickname(raw: string, max = NICKNAME_MAX): string {
+  return raw.trim().replace(/\s+/g, " ").slice(0, max)
 }
 
 export function nicknameOk(name: string): boolean {
   return name.length >= 2 && /^[\p{L}\p{N} _.\-]+$/u.test(name)
+}
+
+// An evaluation needs a name the trainer can match to a student.
+export function fullNameOk(name: string): boolean {
+  return /^[\p{L}][\p{L}'’.\-]*( [\p{L}][\p{L}'’.\-]*)+$/u.test(name)
+}
+
+function everyoneAnswered(game: Game, question: Question): boolean {
+  return game.players.length > 0 && game.players.every((player) => player.answers[question.id])
 }
 
 export function currentQuestion(game: Game) {
@@ -54,7 +72,12 @@ export function tickGame(game: Game, now = Date.now()): Game {
   if (live.phase === "question" && live.questionStartedAt != null) {
     const question = currentQuestion(live)
     if (!question) return finishGame(live)
-    if (remainingMs(live.questionStartedAt, question.timeLimitMs, now) > 0) return live
+    const left = remainingMs(live.questionStartedAt, question.timeLimitMs, now)
+    if (modeOf(live) === "exam") {
+      // No correction in an evaluation: the next question follows directly.
+      return everyoneAnswered(live, question) || left === 0 ? advanceQuestion(live, now) : live
+    }
+    if (left > 0) return live
     live = {
       ...live,
       phase: "reveal",
@@ -112,15 +135,19 @@ export function assertQuestionId(game: Game, questionId?: string): void {
 }
 
 export function joinPlayer(game: Game, nickname: string): { game: Game; player: Player } {
-  const name = normalizeNickname(nickname)
-  if (!nicknameOk(name)) {
+  const exam = modeOf(game) === "exam"
+  const name = normalizeNickname(nickname, exam ? FULL_NAME_MAX : NICKNAME_MAX)
+  if (exam && !fullNameOk(name)) {
+    throw new Error("Indiquez votre prénom et votre nom (lettres uniquement).")
+  }
+  if (!exam && !nicknameOk(name)) {
     throw new Error("Callsign invalide. 2 à 18 caractères, lettres / chiffres.")
   }
   const taken = game.players.some(
     (p) => p.nickname.toLocaleLowerCase("fr") === name.toLocaleLowerCase("fr"),
   )
   if (taken) {
-    throw new Error("Ce callsign est déjà pris sur ce lien sol.")
+    throw new Error(exam ? "Ce nom est déjà inscrit dans cette salle." : "Ce callsign est déjà pris sur ce lien sol.")
   }
   if (game.phase === "podium") {
     throw new Error("Le brief est terminé.")
@@ -137,7 +164,12 @@ export function joinPlayer(game: Game, nickname: string): { game: Game; player: 
 
 export function selectQuiz(game: Game, quizId: string): Game {
   if (game.phase !== "lobby") throw new Error("Le brief a déjà commencé.")
-  if (!getQuiz(quizId)) throw new Error("Brief introuvable.")
+  const quiz = getQuiz(quizId)
+  if (!quiz) throw new Error("Brief introuvable.")
+  if (game.players.length > 0 && quizMode(quiz) !== modeOf(game)) {
+    // Students joined with the identity the previous mode asked for.
+    throw new Error("Des joueurs sont déjà entrés : choisissez l’évaluation avant d’afficher le code.")
+  }
   return { ...game, quizId }
 }
 
@@ -145,7 +177,11 @@ export function startBrief(game: Game, now = Date.now()): Game {
   if (game.phase !== "lobby") throw new Error("Le brief a déjà commencé.")
   const quizId = quizIdOf(game)
   if (!quizId) throw new Error("Choisissez un brief avant le GO.")
-  if (!getQuiz(quizId)) throw new Error("Brief introuvable.")
+  const quiz = getQuiz(quizId)
+  if (!quiz) throw new Error("Brief introuvable.")
+  if (quizMode(quiz) === "exam" && game.players.length === 0) {
+    throw new Error("Aucun étudiant dans la salle.")
+  }
   return {
     ...game,
     quizId,
@@ -154,6 +190,9 @@ export function startBrief(game: Game, now = Date.now()): Game {
     questionStartedAt: now,
     revealStartedAt: null,
     revealPausedAt: null,
+    sessionId: randomUUID(),
+    startedAt: now,
+    archivedAt: null,
   }
 }
 
@@ -178,6 +217,9 @@ export function answerQuestion(
   if (!player) throw new Error("Opérateur inconnu.")
 
   const previous = player.answers[question.id]
+  const exam = modeOf(live) === "exam"
+  if (exam && previous) throw new Error("Réponse déjà validée.")
+  if (exam && choiceIndex == null) throw new Error("Choisissez une réponse.")
   if (choiceIndex != null && previous?.choiceIndex === choiceIndex) return live
   if (choiceIndex == null && !previous) return live
   const rest = { ...player.answers }
@@ -194,7 +236,7 @@ export function answerQuestion(
 
   const elapsed = now - (live.questionStartedAt ?? now)
   const correct = choiceIndex === question.correctIndex
-  const points = scoreAnswer(correct, elapsed, question.timeLimitMs)
+  const points = exam ? Number(correct) : scoreAnswer(correct, elapsed, question.timeLimitMs)
   const nextPlayer: Player = {
     ...player,
     score: score + points,
@@ -212,6 +254,7 @@ export function answerQuestion(
 export function revealNow(game: Game, now = Date.now(), questionId?: string): Game {
   const live = tickGame(game, now)
   assertQuestionId(live, questionId)
+  if (modeOf(live) === "exam") throw new Error("Pas de corrigé pendant une évaluation.")
   if (live.phase !== "question" && live.phase !== "reveal") {
     throw new Error("Pas de question à juger.")
   }
@@ -223,6 +266,7 @@ export function nextQuestion(game: Game, now = Date.now(), questionId?: string):
   const live = tickGame(game, now)
   assertQuestionId(live, questionId)
   if (live.questionIndex !== game.questionIndex || live.phase === "podium") return live
+  if (live.phase === "question" && modeOf(live) === "exam") return advanceQuestion(live, now)
   if (live.phase !== "reveal") throw new Error("Attendez le verdict.")
   return advanceQuestion(live, now)
 }
@@ -248,6 +292,7 @@ export function resumeReveal(game: Game, now = Date.now(), questionId?: string):
 }
 
 function playerStreak(game: Game, player: Player) {
+  if (modeOf(game) === "exam") return { streak: 0, bestStreak: 0 }
   const deck = questionsFor(game)
   const completed = game.phase === "lobby"
     ? 0
@@ -270,7 +315,10 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
     live.phase === "question" || live.phase === "reveal" ? liveQuestion : null
   const isHost = viewer.role === "host" && viewer.token === live.hostToken
   const youId = viewer.role === "player" ? viewer.playerId : null
-  const showCorrect = live.phase === "reveal" || live.phase === "podium"
+  const mode = modeOf(live)
+  const exam = mode === "exam"
+  // An evaluation never exposes answers, vote counts or scores, even to the projector.
+  const showCorrect = !exam && (live.phase === "reveal" || live.phase === "podium")
   const counts = [0, 0, 0, 0]
   if (question) {
     for (const player of live.players) {
@@ -283,7 +331,7 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
     ? remainingMs(live.questionStartedAt, question.timeLimitMs, now)
     : 0
 
-  const visibleScore = (player: Player) => player.score - (
+  const visibleScore = (player: Player) => exam ? 0 : player.score - (
     live.phase === "question" && question ? (player.answers[question.id]?.points ?? 0) : 0
   )
   const players: PublicPlayer[] = [...live.players]
@@ -324,7 +372,7 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
           prompt: question.prompt,
           choices: question.choices.map((text, index) => ({
             text,
-            count: isHost || showCorrect ? counts[index] : undefined,
+            count: !exam && (isHost || showCorrect) ? counts[index] : undefined,
           })),
           timeLimitMs: question.timeLimitMs,
           correctIndex: showCorrect ? question.correctIndex : undefined,
@@ -345,5 +393,8 @@ export function toPublic(game: Game, viewer: Viewer, storage: "memory" | "redis"
     storage,
     quizId: quiz?.id ?? null,
     quizTitle: quiz?.title ?? null,
+    mode,
+    cooldownRemainingMs: exam && live.phase === "question" && question && remaining <= EXAM_COOLDOWN_MS ? remaining : null,
+    sessionId: isHost ? live.sessionId ?? null : undefined,
   }
 }

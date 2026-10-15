@@ -10,7 +10,8 @@ import {
   toPublic,
 } from "@/lib/game"
 import { hasValidHostCookie, hostUnauthorized } from "@/lib/host-auth"
-import { deleteGame, saveGame, storageKind, withGameLock } from "@/lib/store"
+import { archiveExam, commitGame } from "@/lib/exam-results"
+import { deleteGame, storageKind, withGameLock } from "@/lib/store"
 import type { Game } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
@@ -41,12 +42,15 @@ export async function POST(request: Request, ctx: Ctx) {
         return { status: 401 as const, error: "Console formateur non autorisée." }
       }
       if (body.action === "abort") {
+        // An interrupted evaluation keeps the answers already given.
+        const ended = tickGame(game)
+        if (ended.phase !== "lobby" && !ended.archivedAt) await archiveExam(ended, Date.now(), ended.phase === "podium")
         await deleteGame(pin)
         return { status: 200 as const, body: { aborted: true } }
       }
       const now = Date.now()
       let live = tickGame(game, now)
-      if (live !== game) live = await saveGame(live)
+      if (live !== game) live = await commitGame(live, now)
       let next: Game | null
       if (body.action === "start") {
         next = startBrief(live, now)
@@ -67,7 +71,7 @@ export async function POST(request: Request, ctx: Ctx) {
         next = null
       }
       if (!next) return { status: 400 as const, error: "Action inconnue." }
-      const stored = await saveGame(next)
+      const stored = await commitGame(next, now)
       return {
         status: 200 as const,
         body: toPublic(stored, { role: "host", token: game.hostToken }, storageKind(), now),

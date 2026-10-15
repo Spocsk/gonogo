@@ -324,6 +324,9 @@ export default function HostPage() {
           ) : (
             <p className="font-mono tabular text-paper-dim text-sm">{formatPin(game.pin)}</p>
           )}
+          <Link href="/host/results" className="font-display text-lg uppercase tracking-wide text-paper-dim hover:text-go">
+            Notes
+          </Link>
           <button
             type="button"
             onClick={() => void abortToHome()}
@@ -344,7 +347,10 @@ export default function HostPage() {
           onStart={() => void act("start")}
         />
       ) : null}
-      {game.phase === "question" || game.phase === "reveal" ? (
+      {game.mode === "exam" && game.phase === "question" ? (
+        <ExamStage game={game} onSkip={() => void act("next")} pending={actionPending} />
+      ) : null}
+      {game.mode !== "exam" && (game.phase === "question" || game.phase === "reveal") ? (
         <QuestionStage
           game={game}
           onReveal={() => void act("reveal")}
@@ -353,7 +359,30 @@ export default function HostPage() {
           pending={actionPending}
         />
       ) : null}
-      {game.phase === "podium" ? (
+      {game.phase === "podium" && game.mode === "exam" ? (
+        <section className="flex flex-1 flex-col justify-center gap-8">
+          <h2 className="font-display text-6xl uppercase">Évaluation terminée</h2>
+          <p className="text-2xl text-paper-dim">
+            {game.players.length} copie{game.players.length > 1 ? "s" : ""} enregistrée{game.players.length > 1 ? "s" : ""}. Les étudiants peuvent passer à l’évaluation suivante.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              href={game.sessionId ? `/host/results?session=${encodeURIComponent(game.sessionId)}` : "/host/results"}
+              className="bg-go text-ink font-display text-3xl uppercase tracking-wide px-8 py-4"
+            >
+              Voir les notes
+            </Link>
+            <button
+              type="button"
+              onClick={() => void resetSession()}
+              className="bg-paper text-ink font-display text-3xl uppercase tracking-wide px-8 py-4"
+            >
+              Nouvelle partie
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {game.phase === "podium" && game.mode !== "exam" ? (
         <section className="flex flex-1 flex-col justify-center gap-10">
           <h2 className="font-display text-6xl uppercase">Classement final</h2>
           <Podium players={game.players} />
@@ -389,7 +418,8 @@ function Lobby({
   onStart: () => void
 }) {
   const selected = quizzes?.find((quiz) => quiz.id === game.quizId)
-  const canStart = Boolean(game.quizId)
+  const exam = game.mode === "exam"
+  const canStart = Boolean(game.quizId) && (!exam || game.players.length > 0)
 
   return (
     <section className="flex flex-1 flex-col gap-10">
@@ -411,7 +441,7 @@ function Lobby({
           ) : null}
           <Frame className="p-4 bg-ink/50">
             <p className="font-mono text-sm text-paper-dim mb-3 tabular">
-              {String(game.players.length).padStart(2, "0")} callsigns
+              {String(game.players.length).padStart(2, "0")} {exam ? "étudiants" : "callsigns"}
             </p>
             <ul className="flex flex-wrap gap-2">
               {game.players.map((player) => (
@@ -432,7 +462,7 @@ function Lobby({
           Briefs disponibles
         </p>
         <p className="text-paper-dim mb-4">
-          Choisissez le quizz à lancer. Les callsigns peuvent rejoindre pendant le choix.
+          Choisissez le quizz à lancer. Pour une évaluation, choisissez-la avant d’afficher le code : les étudiants entrent alors avec leur prénom et leur nom.
         </p>
         {quizzesError ? <p className="text-nogo mb-4">{quizzesError}</p> : null}
         {!quizzes ? (
@@ -453,6 +483,7 @@ function Lobby({
                       <p className="text-paper-dim mt-1">{quiz.subtitle}</p>
                       <p className="font-mono tabular text-sm text-paper-dim mt-3">
                         {quiz.days.join(" · ")} · {quiz.questionCount} questions
+                        {quiz.mode === "exam" ? " · évaluation notée /20" : ""}
                       </p>
                     </button>
                   </Frame>
@@ -469,7 +500,11 @@ function Lobby({
         disabled={!canStart}
         className="self-start bg-go text-ink font-display text-4xl uppercase tracking-wide px-8 py-4 disabled:opacity-40"
       >
-        {canStart ? `GO · ${selected?.title ?? game.quizTitle}` : "Choisissez un brief"}
+        {canStart
+          ? `GO · ${selected?.title ?? game.quizTitle}`
+          : game.quizId
+            ? "En attente des étudiants"
+            : "Choisissez un brief"}
       </button>
     </section>
   )
@@ -577,6 +612,86 @@ function QuestionStage({
       {game.phase === "reveal" ? (
         <Leaderboard players={game.players} limit={5} />
       ) : null}
+    </section>
+  )
+}
+
+function formatClock(ms: number) {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+}
+
+function ExamStage({
+  game,
+  onSkip,
+  pending,
+}: {
+  game: PublicGame
+  onSkip: () => void
+  pending: boolean
+}) {
+  const question = game.question
+  const { questionRemaining } = useRoundClock(game)
+  const cooldown = game.cooldownRemainingMs != null ? questionRemaining : null
+  const missing = game.players.filter((player) => !player.answered)
+
+  if (!question) return null
+
+  return (
+    <section className="flex flex-1 flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <p className="font-mono tabular text-paper-dim">
+          Évaluation · {game.questionIndex + 1}/{game.questionCount}
+        </p>
+        {cooldown != null ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-paper-dim">Question suivante dans</span>
+            <p className="font-display text-6xl tabular leading-none text-nogo">{formatClock(cooldown)}</p>
+          </div>
+        ) : (
+          <p className="text-paper-dim">En attente de toutes les réponses</p>
+        )}
+      </div>
+      <p className="max-w-5xl whitespace-pre-wrap text-lg leading-relaxed text-paper-dim"><QuestionText text={question.context} /></p>
+      <h2 className="font-display text-[clamp(1.8rem,4.2vw,3.4rem)] leading-[1.12] tracking-wide">
+        <QuestionText text={question.prompt} />
+      </h2>
+      <ol className="grid gap-3 md:grid-cols-2">
+        {question.choices.map((choice, index) => (
+          <li
+            key={choice.text}
+            className="flex items-start gap-4 p-4 min-h-24"
+            style={{ background: PADS[index].bg, color: PADS[index].fg }}
+          >
+            <Shape index={index} className="size-8 shrink-0 mt-1" />
+            <span className="text-xl leading-snug font-semibold">
+              <QuestionText text={choice.text} />
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <p className="font-mono tabular text-paper-dim">
+            {game.answeredCount}/{game.players.length} ont répondu
+          </p>
+          {missing.length > 0 ? (
+            <p className="text-sm text-paper-dim">
+              Manquent : {missing.map((player) => player.nickname).join(", ")}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm("Passer à la question suivante ? Les réponses manquantes vaudront 0.")) onSkip()
+          }}
+          disabled={pending}
+          className="bg-paper text-ink font-display text-2xl uppercase px-6 py-3 disabled:opacity-40"
+        >
+          Passer la question
+        </button>
+      </div>
     </section>
   )
 }

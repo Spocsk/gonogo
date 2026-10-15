@@ -12,11 +12,14 @@ export type Question = {
   timeLimitMs: number
 }
 
+export type QuizMode = "live" | "exam"
+
 export type Quiz = {
   id: string
   title: string
   subtitle: string
   questions: Question[]
+  mode?: QuizMode
 }
 
 export type QuizSummary = {
@@ -25,6 +28,7 @@ export type QuizSummary = {
   subtitle: string
   questionCount: number
   days: DayTag[]
+  mode: QuizMode
 }
 
 export type PlayerAnswer = {
@@ -54,6 +58,9 @@ export type Game = {
   revealPausedAt?: number | null
   players: Player[]
   quizId?: string | null
+  sessionId?: string | null
+  startedAt?: number | null
+  archivedAt?: number | null
 }
 
 export type PublicChoice = {
@@ -102,6 +109,9 @@ export type PublicGame = {
   storage: "memory" | "redis"
   quizId: string | null
   quizTitle: string | null
+  mode: QuizMode
+  cooldownRemainingMs: number | null
+  sessionId?: string | null
 }
 
 export type Viewer =

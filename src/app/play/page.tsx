@@ -36,7 +36,9 @@ export default function PlayPage() {
   const pick = useCallback(
     async (choiceIndex: number) => {
       if (!pin || !playerId || !game || game.phase !== "question" || answerPending) return
-      const nextChoice = game.yourChoiceIndex === choiceIndex ? null : choiceIndex
+      // An evaluation answer is final once validated.
+      if (game.mode === "exam" && game.you?.answered) return
+      const nextChoice = game.mode !== "exam" && game.yourChoiceIndex === choiceIndex ? null : choiceIndex
       setAnswerPending(true)
       setAnswerError(null)
       try {
@@ -60,11 +62,11 @@ export default function PlayPage() {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const map: Record<string, number> = { "1": 0, "2": 1, "3": 2, "4": 3 }
-      if (event.key in map) void pick(map[event.key])
+      if (event.key in map && game?.mode !== "exam") void pick(map[event.key])
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [pick])
+  }, [pick, game?.mode])
 
   if (!ready) return null
 
@@ -104,7 +106,19 @@ export default function PlayPage() {
         <h1 className="font-display text-6xl uppercase mt-4 leading-none">
           {game.you?.nickname}
         </h1>
-        <p className="mt-6 text-xl text-paper-dim">Callsign locké. En attente du GO.</p>
+        <p className="mt-6 text-xl text-paper-dim">
+          {game.mode === "exam" ? "Inscription enregistrée. L’évaluation va commencer." : "Callsign locké. En attente du GO."}
+        </p>
+      </main>
+    )
+  }
+
+  if (game.phase === "podium" && game.mode === "exam") {
+    return (
+      <main className="min-h-dvh flex flex-col justify-center gap-6 p-6 py-10">
+        <h1 className="font-display text-5xl uppercase leading-none">Évaluation QCM terminée</h1>
+        <p className="text-xl text-paper">Vos réponses sont enregistrées, {game.you?.nickname}.</p>
+        <p className="text-xl text-paper-dim">Vous pouvez passer à l’évaluation suivante.</p>
       </main>
     )
   }
@@ -136,7 +150,97 @@ export default function PlayPage() {
     )
   }
 
+  if (game.mode === "exam") {
+    return <ExamQuestion key={game.question?.id} game={game} onValidate={pick} pending={answerPending} error={answerError} />
+  }
+
   return <PlayQuestion key={game.question?.id} game={game} onPick={pick} pending={answerPending} error={answerError} />
+}
+
+function ExamQuestion({
+  game,
+  onValidate,
+  pending,
+  error,
+}: {
+  game: PublicGame
+  onValidate: (index: number) => void
+  pending: boolean
+  error: string | null
+}) {
+  const { questionRemaining } = useRoundClock(game)
+  const [draft, setDraft] = useState<number | null>(null)
+  const question = game.question
+  const answered = Boolean(game.you?.answered)
+  const locked = answered || pending || questionRemaining <= 0
+  const chosen = answered ? game.yourChoiceIndex : draft
+  const cooldown = game.cooldownRemainingMs != null ? Math.ceil(questionRemaining / 1000) : null
+
+  if (!question) return null
+
+  return (
+    <main className="min-h-dvh flex flex-col">
+      <header className="flex items-end justify-between gap-3 px-4 pt-4 pb-2">
+        <p className="min-w-0 font-display text-2xl uppercase truncate">{game.you?.nickname}</p>
+        {cooldown != null ? (
+          <div className="text-right">
+            <p className="text-xs text-paper-dim">Question suivante dans</p>
+            <p className="font-display text-4xl tabular text-nogo">
+              {Math.floor(cooldown / 60)}:{String(cooldown % 60).padStart(2, "0")}
+            </p>
+          </div>
+        ) : null}
+      </header>
+      <div className="px-4 pb-3 flex flex-col gap-2">
+        <p className="text-xs font-mono tabular text-paper-dim">{game.questionIndex + 1}/{game.questionCount} · {game.quizTitle}</p>
+        <p className="whitespace-pre-wrap text-sm leading-snug text-paper-dim"><QuestionText text={question.context} /></p>
+        <p className="text-base leading-snug text-paper font-semibold"><QuestionText text={question.prompt} /></p>
+      </div>
+      {error ? <p role="alert" className="px-4 pb-3 text-sm text-paper">{error}</p> : null}
+      <div className="grid grid-cols-2 grid-rows-2 flex-1 gap-2 p-2">
+        {question.choices.map((choice, index) => {
+          const selected = chosen === index
+          return (
+            <button
+              key={choice.text}
+              type="button"
+              disabled={locked}
+              aria-pressed={selected}
+              onClick={() => setDraft(index)}
+              className="min-w-0 min-h-40 flex flex-col items-start justify-between gap-4 p-4 text-left disabled:cursor-default touch-manipulation"
+              style={{
+                background: PADS[index].bg,
+                color: PADS[index].fg,
+                outline: selected ? "3px solid #eadfc8" : undefined,
+                opacity: answered && !selected ? 0.45 : 1,
+              }}
+            >
+              <Shape index={index} className="size-10" />
+              <span className="font-sans normal-case text-lg font-semibold leading-snug">
+                <QuestionText text={choice.text} />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="px-4 py-4 pb-10">
+        {answered ? (
+          <p role="status" className="text-center text-paper-dim">
+            Réponse enregistrée. En attente des autres étudiants.
+          </p>
+        ) : (
+          <button
+            type="button"
+            disabled={draft == null || locked}
+            onClick={() => draft != null && onValidate(draft)}
+            className="w-full bg-go text-ink font-display text-3xl uppercase tracking-wide py-4 disabled:opacity-40"
+          >
+            {pending ? "Envoi…" : "Valider ma réponse"}
+          </button>
+        )}
+      </div>
+    </main>
+  )
 }
 
 function PlayQuestion({
