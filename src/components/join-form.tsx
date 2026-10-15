@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { FormEvent, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useState } from "react"
 import { formatPin } from "./frame"
 
 export function JoinForm() {
@@ -13,6 +13,23 @@ export function JoinForm() {
   const [pending, setPending] = useState(false)
 
   const cleanPin = useMemo(() => pin.replace(/\D/g, "").slice(0, 6), [pin])
+  const [examPin, setExamPin] = useState<string | null>(null)
+  const exam = examPin === cleanPin
+
+  useEffect(() => {
+    if (cleanPin.length !== 6) return
+    let cancelled = false
+    // An evaluation room asks for a real name instead of a callsign.
+    fetch(`/api/games/${cleanPin}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((game: { mode?: string } | null) => {
+        if (!cancelled) setExamPin(game?.mode === "exam" ? cleanPin : null)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [cleanPin])
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -58,13 +75,13 @@ export function JoinForm() {
         />
       </label>
       <label className="flex flex-col gap-2">
-        <span className="text-paper-dim text-sm">Callsign</span>
+        <span className="text-paper-dim text-sm">{exam ? "Prénom et nom" : "Callsign"}</span>
         <input
-          autoComplete="nickname"
+          autoComplete={exam ? "name" : "nickname"}
           value={nickname}
           onChange={(event) => setNickname(event.target.value)}
           placeholder="ex. Maya Chen"
-          maxLength={18}
+          maxLength={exam ? 40 : 18}
           className="bg-ink-2 text-paper font-display text-3xl tracking-wide px-4 py-3 w-full"
         />
       </label>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { answerQuestion, tickGame, toPublic } from "@/lib/game"
-import { saveGame, storageKind, withGameLock } from "@/lib/store"
+import { commitGame } from "@/lib/exam-results"
+import { storageKind, withGameLock } from "@/lib/store"
 
 export const dynamic = "force-dynamic"
 
@@ -29,9 +30,10 @@ export async function POST(request: Request, ctx: Ctx) {
       if (!game) return { status: 404 as const, error: "Lien sol introuvable." }
       const now = Date.now()
       let live = tickGame(game, now)
-      if (live !== game) live = await saveGame(live)
-      const next = answerQuestion(live, body.playerId!, body.choiceIndex ?? null, now, body.questionId)
-      const stored = next !== live ? await saveGame(next) : live
+      if (live !== game) live = await commitGame(live, now)
+      // The last missing answer of an evaluation moves the room on at once.
+      const next = tickGame(answerQuestion(live, body.playerId!, body.choiceIndex ?? null, now, body.questionId), now)
+      const stored = next !== live ? await commitGame(next, now) : live
       return {
         status: 200 as const,
         body: toPublic(stored, { role: "player", playerId: body.playerId! }, storageKind(), now),

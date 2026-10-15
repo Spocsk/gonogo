@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { tickGame, toPublic } from "@/lib/game"
 import { hasValidHostCookie } from "@/lib/host-auth"
-import { getGame, saveGame, storageKind, withGameLock } from "@/lib/store"
+import { commitGame } from "@/lib/exam-results"
+import { getGame, storageKind, withGameLock } from "@/lib/store"
 import type { Viewer } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
@@ -33,7 +34,7 @@ export async function GET(request: Request, ctx: Ctx) {
         if (!current) return null
         now = Date.now()
         const ticked = tickGame(current, now)
-        return ticked !== current ? await saveGame(ticked) : current
+        return ticked !== current ? await commitGame(ticked, now) : current
       })
       if (!updated) {
         return NextResponse.json({ error: "Lien sol introuvable." }, { status: 404 })

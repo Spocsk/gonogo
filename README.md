@@ -2,11 +2,25 @@
 
 Quiz live type Kahoot pour les révisions Bachelor 2. Une question, quatre réponses, sessions avec callsign.
 
-Trois briefs sont disponibles dans la console formateur :
+Quatre briefs sont disponibles dans la console formateur :
 
 - **ODYSSEY-01** : React + TypeScript, jours 1 et 5.
 - **Dock Control** : Python + FastAPI, jours 1 à 5.
 - **Le Cabinet du Quai** : exactement 20 questions SQL sur les objets programmables (fonctions, PL/pgSQL, procédures et triggers), basées sur la [première partie du cours](https://le-cabinet-du-quai-slides.vercel.app/objets/).
+- **Évaluation · Le Cabinet du Quai** : QCM d’évaluation de 20 questions noté sur 20, couvrant les trois chapitres du cours SQL (objets programmables, SQL analytique et CTE, administration et optimisation).
+
+### Mode évaluation
+
+L’évaluation suit des règles propres :
+
+- Le formateur choisit l’évaluation **avant** d’afficher le code. Les étudiants entrent alors avec leur prénom et leur nom (pas de callsign).
+- Chaque bonne réponse vaut 1 point, sans bonus de vitesse ni de série. Une réponse validée est définitive.
+- Aucun corrigé, aucune répartition des votes, aucun score ni classement n’est affiché, ni sur les téléphones ni sur le projecteur.
+- La question suivante démarre dès que tous les étudiants de la salle ont répondu. Au bout de **2 minutes**, s’il manque des réponses, un compte à rebours de **60 secondes** s’affiche, puis la question avance ; une réponse manquante vaut 0. Le formateur peut aussi passer une question.
+- À la fin, les étudiants voient que l’évaluation est terminée et qu’ils peuvent passer à l’évaluation suivante.
+- Les notes sont enregistrées sans expiration (clé Redis `gonogo:exam:session:*`), y compris pour une évaluation interrompue, et consultables sur [`/host/results`](http://localhost:3000/host/results) avec le mot de passe formateur, avec export CSV. Sans Redis, elles restent en mémoire jusqu’au redémarrage.
+
+### Quiz live
 
 Après chaque question, le verdict et le corrigé restent affichés pendant **10 secondes**. La question suivante démarre automatiquement ; après la dernière, le podium s’affiche. Le formateur peut avancer immédiatement, mettre la correction en pause et la reprendre. Les horloges sont synchronisées par le serveur ; les transitions sont persistées dès qu’un joueur ou le formateur consulte la session.
 
