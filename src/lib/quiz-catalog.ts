@@ -1,5 +1,6 @@
 import { ODYSSEY_QUESTIONS } from "./questions"
 import { CABINET_EVAL_QUESTIONS } from "./quizzes/cabinet-eval"
+import { CONTRAT_EVAL_QUESTIONS } from "./quizzes/contrat-eval"
 import { DOCK_CONTROL_QUESTIONS } from "./quizzes/dock-control"
 import { SQL_OBJECTS_QUESTIONS } from "./quizzes/sql-objects"
 import type { DayTag, Quiz, QuizMode, QuizSummary } from "./types"
@@ -32,6 +33,13 @@ export const QUIZZES: Quiz[] = [
     title: "Évaluation · Le Cabinet du Quai",
     subtitle: "QCM noté sur 20 · objets, analytique, administration",
     questions: CABINET_EVAL_QUESTIONS,
+    mode: "exam",
+  },
+  {
+    id: "contrat-eval",
+    title: "Évaluation · Deux équipes, un contrat",
+    subtitle: "QCM noté sur 20 · cours 1 et 2, contrat d’API et OpenAPI",
+    questions: CONTRAT_EVAL_QUESTIONS,
     mode: "exam",
   },
 ]

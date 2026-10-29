@@ -52,18 +52,20 @@ function wrongAnswer(game: Game) {
   return (correctAnswer(game) + 1) % 4
 }
 
-test("the evaluation has 20 balanced questions and is listed as an exam", () => {
-  const summary = listQuizSummaries().find((quiz) => quiz.id === "cabinet-eval")
-  assert.equal(summary?.mode, "exam")
-  assert.equal(summary?.questionCount, 20)
-  const { game } = room()
-  const deck = questionsFor(game)
-  assert.equal(new Set(deck.map((question) => question.id)).size, 20)
-  for (const index of [0, 1, 2, 3]) {
-    assert.equal(deck.filter((question) => question.correctIndex === index).length, 5)
-  }
-  assert.ok(deck.every((question) => question.timeLimitMs === EXAM_QUESTION_MS))
-})
+for (const quizId of ["cabinet-eval", "contrat-eval"]) {
+  test(`the ${quizId} evaluation has 20 balanced questions and is listed as an exam`, () => {
+    const summary = listQuizSummaries().find((quiz) => quiz.id === quizId)
+    assert.equal(summary?.mode, "exam")
+    assert.equal(summary?.questionCount, 20)
+    const game = startBrief(joinPlayer(selectQuiz(createGame("654321"), quizId), "Ada Lovelace").game, START)
+    const deck = questionsFor(game)
+    assert.equal(new Set(deck.map((question) => question.id)).size, 20)
+    for (const index of [0, 1, 2, 3]) {
+      assert.equal(deck.filter((question) => question.correctIndex === index).length, 5)
+    }
+    assert.ok(deck.every((question) => question.timeLimitMs === EXAM_QUESTION_MS))
+  })
+}
 
 test("students join with a first and last name, and the mode cannot switch once they are in", () => {
   const game = selectQuiz(createGame("654321"), "cabinet-eval")
