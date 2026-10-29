@@ -37,10 +37,9 @@ export const QUIZZES: Quiz[] = [
   },
   {
     id: "contrat-eval",
-    title: "Évaluation · Deux équipes, un contrat",
-    subtitle: "QCM noté sur 20 · cours 1 et 2, contrat d’API et OpenAPI",
+    title: "Deux équipes, un contrat",
+    subtitle: "Recap cours 1 et 2 · contrat d’API et OpenAPI",
     questions: CONTRAT_EVAL_QUESTIONS,
-    mode: "exam",
   },
 ]
 

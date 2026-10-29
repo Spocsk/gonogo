@@ -1,7 +1,7 @@
-import { EXAM_QUESTION_MS } from "../exam-timing"
+import { TIME_LIMIT_MS } from "../questions"
 import type { Question } from "../types"
 
-// J1 : cours 1 « Deux équipes, un contrat » · J2 : cours 2 « Le contrat d’abord ».
+// Quiz non noté. J1 : cours 1 « Deux équipes, un contrat » · J2 : cours 2 « Le contrat d’abord ».
 export const CONTRAT_EVAL_QUESTIONS: Question[] = [
   {
     id: "eval-contrat-verifiable",
@@ -18,7 +18,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 1,
     explanation:
       "Promesse : ce que chaque côté peut attendre de l’autre. Vérifiable : un outil peut le contrôler. Si aucune machine ne peut le vérifier, c’est de la documentation.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-validation-sides",
@@ -35,7 +35,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 3,
     explanation:
       "La validation existe des deux côtés pour deux raisons différentes : ergonomie côté front, protection côté back. N’importe qui peut appeler l’API sans passer par le formulaire.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-conway",
@@ -52,7 +52,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 0,
     explanation:
       "Selon Conway (1968), deux équipes qui communiquent mal produisent une API bavarde et défensive. L’API devient leur canal de communication officiel.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-ghost-field",
@@ -69,7 +69,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "Déclarer explicitement ce qui est requis transforme une supposition du front en promesse vérifiable du back.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-extra-field",
@@ -86,7 +86,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 1,
     explanation:
       "Sans `additionalProperties: false`, un champ supplémentaire est conforme. C’est le contrat qui tranche, pas l’intuition.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-not-fixed",
@@ -103,7 +103,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 0,
     explanation:
       "Le langage, le framework, la base de données et l’organisation du code restent la liberté de chaque équipe. Plus le contrat est précis à la jointure, plus chacun est libre derrière.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-idempotence",
@@ -120,7 +120,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 3,
     explanation:
       "Idempotent signifie que rejouer la requête produit le même état. GET, PUT et DELETE le sont, POST non : le contrat doit dire ce qu’il advient d’un score envoyé deux fois.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-strict",
@@ -137,7 +137,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "Être tolérant crée un contrat implicite que personne n’a écrit, et dont un client finira par dépendre (RFC 9413). Validation stricte, erreur explicite, jamais de correction silencieuse.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-websocket",
@@ -154,7 +154,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 0,
     explanation:
       "Le WebSocket n’a pas de sémantique HTTP. On écrit le contrat soi-même : types partagés en TypeScript, ou AsyncAPI entre équipes de langages différents.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-bff-key",
@@ -171,7 +171,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 3,
     explanation:
       "Le back du mini-jeu est un BFF : il garde les secrets côté serveur, appelle le hub et adapte les réponses au front.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-code-first-risk",
@@ -188,7 +188,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "Le code-first convient à une équipe seule. Entre équipes, le contrat passe en premier et la PR de contrat devient la réunion.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-nullable-31",
@@ -205,7 +205,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 1,
     explanation:
       "OpenAPI 3.1 adopte JSON Schema 2020-12 : `nullable` disparaît et `null` devient un type. Les validateurs JSON Schema lisent alors le schéma sans traduction.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-strict-in",
@@ -222,7 +222,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 3,
     explanation:
       "En entrée, un champ inconnu est refusé (422). En sortie, on garde la liberté d’ajouter des champs sans casser les clients existants.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-error-code",
@@ -239,7 +239,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 0,
     explanation:
       "Le `code` est stable et sert aux programmes. Le `message` peut changer et sert aux humains.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-undeclared-status",
@@ -256,7 +256,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "Un code de statut non déclaré qui sort en production rompt le contrat, même si « ça marche ».",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-prism-422",
@@ -273,7 +273,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 1,
     explanation:
       "Prism est un vrai serveur HTTP qui valide les requêtes contre le contrat. `level` doit être un entier : la requête est rejetée.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-msw",
@@ -290,7 +290,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 0,
     explanation:
       "Chacun mocke ce qui est de l’autre côté de sa jointure : le front simule le back de l’équipe avec MSW, le back simule le hub avec Prism.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-generated-types",
@@ -307,7 +307,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 3,
     explanation:
       "Avec des types générés, le contrat change, la génération change, et le front casse au build plutôt qu’en démo. Un mock typé ne peut plus mentir.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-examples",
@@ -324,7 +324,7 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 1,
     explanation:
       "Les exemples font partie du contrat : Prism les sert (au choix avec `Prefer: example=verrouille`), la doc les montre, et le lint détecte un exemple invalide.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
   {
     id: "eval-contrat-fsq-token",
@@ -341,6 +341,6 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "Le front ne parle jamais au hub directement. Son back appelle `/me` puis `/scores` : la jointure du contrat v1 est entre le back du jeu et l’API du hub.",
-    timeLimitMs: EXAM_QUESTION_MS,
+    timeLimitMs: TIME_LIMIT_MS,
   },
 ]
