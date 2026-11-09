@@ -2,6 +2,7 @@ import { ODYSSEY_QUESTIONS } from "./questions"
 import { CABINET_EVAL_QUESTIONS } from "./quizzes/cabinet-eval"
 import { CONTRAT_EVAL_QUESTIONS } from "./quizzes/contrat-eval"
 import { DOCK_CONTROL_QUESTIONS } from "./quizzes/dock-control"
+import { NOVALIA_UP1_QUESTIONS } from "./quizzes/novalia-up1"
 import { SQL_OBJECTS_QUESTIONS } from "./quizzes/sql-objects"
 import type { DayTag, Quiz, QuizMode, QuizSummary } from "./types"
 
@@ -40,6 +41,12 @@ export const QUIZZES: Quiz[] = [
     title: "Deux équipes, un contrat",
     subtitle: "Recap cours 1 et 2 · contrat d’API et OpenAPI",
     questions: CONTRAT_EVAL_QUESTIONS,
+  },
+  {
+    id: "novalia-up1",
+    title: "Dossier Novalia",
+    subtitle: "Gouvernance & conformité · UP1 panorama réglementaire",
+    questions: NOVALIA_UP1_QUESTIONS,
   },
 ]
 
