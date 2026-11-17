@@ -65,10 +65,11 @@ test("the evaluation has 20 balanced questions and is listed as an exam", () => 
   assert.ok(deck.every((question) => question.timeLimitMs === EXAM_QUESTION_MS))
 })
 
-test("the courses 1 and 2 recap is a live quiz, not graded", () => {
+test("the courses 1 to 3 recap is a live quiz, not graded", () => {
   const summary = listQuizSummaries().find((quiz) => quiz.id === "contrat-eval")
   assert.equal(summary?.mode, "live")
-  assert.equal(summary?.questionCount, 20)
+  assert.equal(summary?.questionCount, 30)
+  assert.deepEqual(summary?.days, ["J1", "J2", "J3"])
 })
 
 test("students join with a first and last name, and the mode cannot switch once they are in", () => {

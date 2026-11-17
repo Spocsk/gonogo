@@ -39,7 +39,7 @@ export const QUIZZES: Quiz[] = [
   {
     id: "contrat-eval",
     title: "Deux équipes, un contrat",
-    subtitle: "Recap cours 1 et 2 · contrat d’API et OpenAPI",
+    subtitle: "Recap cours 1 à 3 · contrat d’API, OpenAPI, Git et CI",
     questions: CONTRAT_EVAL_QUESTIONS,
   },
   {
