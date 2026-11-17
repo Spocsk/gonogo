@@ -1,7 +1,8 @@
 import { TIME_LIMIT_MS } from "../questions"
 import type { Question } from "../types"
 
-// Quiz non noté. J1 : cours 1 « Deux équipes, un contrat » · J2 : cours 2 « Le contrat d’abord ».
+// Quiz non noté. J1 : cours 1 « Deux équipes, un contrat » (26 oct) · J2 : cours 2 « Le contrat d’abord » (27 oct)
+// · J3 : cours 3 « Négocier l’interface » (30 oct).
 export const CONTRAT_EVAL_QUESTIONS: Question[] = [
   {
     id: "eval-contrat-verifiable",
@@ -341,6 +342,176 @@ export const CONTRAT_EVAL_QUESTIONS: Question[] = [
     correctIndex: 2,
     explanation:
       "Le front ne parle jamais au hub directement. Son back appelle `/me` puis `/scores` : la jointure du contrat v1 est entre le back du jeu et l’API du hub.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-trunk-based",
+    day: "J3",
+    context:
+      "Une équipe travaille en trunk-based : elle fusionne dans `main` plusieurs fois par jour. Une fonctionnalité ne sera pas finie avant la semaine prochaine.",
+    prompt: "Que devient le code de cette fonctionnalité inachevée ?",
+    choices: [
+      "Il reste sur une branche `feature/*` jusqu’à la fin",
+      "Il part sur une branche `release/*` dédiée",
+      "Il est fusionné dans `main`, caché derrière un feature flag",
+      "Il attend dans un stash local du développeur",
+    ],
+    correctIndex: 2,
+    explanation:
+      "En trunk-based, on intègre tôt et souvent : l’inachevé est fusionné mais invisible grâce à un flag. GitFlow et GitHub Flow le laissent sur sa branche.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-long-branch",
+    day: "J3",
+    context:
+      "Le cours affirme : « Une branche qui vit une semaine est un contrat que personne n’a signé. »",
+    prompt: "Quel est le vrai coût d’une branche qui dure ?",
+    choices: [
+      "L’intégration repoussée : front et back divergent sans le savoir",
+      "Le conflit de fusion, qui prend du temps à résoudre",
+      "Le stockage occupé sur le serveur Git",
+      "Le temps de CI consommé à chaque push",
+    ],
+    correctIndex: 0,
+    explanation:
+      "Le conflit de fusion n’est que le symptôme. Règle du projet : aucune branche de plus de deux jours, sinon on découpe ou on cache derrière un flag.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-contract-pr",
+    day: "J3",
+    context:
+      "Le back veut ajouter `GET /api/levels/{levelId}/leaderboard`, et le front l’afficher.",
+    prompt: "Comment organiser les PR selon le cours ?",
+    choices: [
+      "Une seule PR qui modifie le contrat, le front et le back, relue par le back",
+      "Le code back d’abord, puis le contrat généré depuis ce code",
+      "Le front d’abord, avec un mock, puis le contrat quand tout marche",
+      "Une PR de contrat à part, relue par les deux sous-groupes et fusionnée avant le code qui l’utilise",
+    ],
+    correctIndex: 3,
+    explanation:
+      "La PR de contrat passe en premier et `CODEOWNERS` impose les deux relectures. Le code front et back suit dans des PR séparées qui la référencent.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-codeowners",
+    day: "J3",
+    context:
+      "Le fichier `.github/CODEOWNERS` contient `/contracts/  @alice @bilal @chloe @dan`. Pourtant, une PR sur le contrat est fusionnée sans relecture des propriétaires.",
+    prompt: "Qu’est-ce qui manque ?",
+    choices: [
+      "Une règle de protection de `main` qui exige la revue des propriétaires du code",
+      "Un hook husky qui bloque le commit en local",
+      "Un fichier `CODEOWNERS` dans chaque dossier",
+      "Rien : `CODEOWNERS` ne concerne que les fichiers YAML",
+    ],
+    correctIndex: 0,
+    explanation:
+      "`CODEOWNERS` désigne qui doit relire, mais ne bloque que si la protection de branche exige la revue des propriétaires du code.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-monorepo",
+    day: "J3",
+    context:
+      "Pour le projet, le cours recommande un monorepo : `contracts/`, `apps/web`, `apps/api`, `packages/api-types`.",
+    prompt: "Quel est l’argument principal ?",
+    choices: [
+      "Les droits peuvent être réglés finement, dépôt par dépôt",
+      "Chaque côté peut livrer à un rythme totalement indépendant",
+      "Un changement de contrat et de ses deux côtés tient dans une seule PR atomique",
+      "Le monorepo impose le même langage au front et au back",
+    ],
+    correctIndex: 2,
+    explanation:
+      "Le contrat bouge souvent et doit bouger avec ses deux côtés. En multi-repo, il faudrait synchroniser trois PR. Un back en Python lit le même YAML : le monorepo n’impose pas le langage.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-conventional-breaking",
+    day: "J3",
+    context:
+      "Un commit renomme `level` en `levelId` dans `RunInput`. Les clients existants vont casser.",
+    prompt: "Quel message suit Conventional Commits ?",
+    choices: [
+      "`fix(api): renommer level en levelId dans RunInput`",
+      "`feat(api)!: renommer level en levelId dans RunInput`",
+      "`chore: petit renommage`",
+      "`refactor(api): level -> levelId (attention)`",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Le `!` (ou le pied de page `BREAKING CHANGE`) signale une rupture. Elle devient visible et la version majeure se calcule : `fix` donne un correctif, `feat` une mineure, `!` une majeure.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-commit-check",
+    day: "J3",
+    context:
+      "L’équipe veut garantir que tous les messages respectent Conventional Commits.",
+    prompt: "Où le cours recommande-t-il de l’imposer ?",
+    choices: [
+      "Dans un hook local husky + commitlint sur chaque poste",
+      "Dans une relecture manuelle de chaque commit",
+      "Dans le fichier `CODEOWNERS`",
+      "En CI, sur le titre de la PR, avec une fusion en squash",
+    ],
+    correctIndex: 3,
+    explanation:
+      "Un contrôle, un endroit, aucun hook à installer : le titre de la PR devient le message du squash. Les hooks locaux sont un confort, ils se contournent avec `--no-verify`.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-ci-git-diff",
+    day: "J3",
+    context:
+      "Le job `contract` lance `pnpm --filter api-types generate`, puis `git diff --exit-code packages/api-types`.",
+    prompt: "Quand cette dernière étape échoue-t-elle ?",
+    choices: [
+      "Quand Spectral trouve une erreur de lint dans le contrat",
+      "Quand les types générés commités ne correspondent plus au contrat : l’un a changé sans l’autre",
+      "Quand la PR contient plus d’un commit",
+      "Quand le cache pnpm est vide",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Régénérer puis comparer détecte qu’on a modifié le contrat sans régénérer les types, ou l’inverse.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-ci-needs",
+    day: "J3",
+    context:
+      "Dans `ci.yml`, les jobs `web` et `api` déclarent tous deux `needs: contract`.",
+    prompt: "Quel est l’effet de cette déclaration ?",
+    choices: [
+      "`web` et `api` ne démarrent que si le contrat est valide, puis tournent en parallèle",
+      "`web` attend `api`, qui attend `contract`",
+      "Les trois jobs tournent sur la même machine",
+      "Le contrat est regénéré à chaque job",
+    ],
+    correctIndex: 0,
+    explanation:
+      "Si le contrat est cassé, inutile de construire le reste. Ensuite, `web` et `api` tournent en même temps, avec trois statuts distincts : on sait quel côté a cassé.",
+    timeLimitMs: TIME_LIMIT_MS,
+  },
+  {
+    id: "eval-contrat-oasdiff",
+    day: "J3",
+    context:
+      "Une PR ajoute un champ requis dans le schéma d’une requête de `contracts/openapi.yaml`. Le job `breaking` lance oasdiff contre la version de `main`.",
+    prompt: "Que se passe-t-il ?",
+    choices: [
+      "Rien : ajouter un champ n’est jamais une rupture",
+      "oasdiff corrige automatiquement le contrat",
+      "Le job échoue : un champ requis ajouté est une rupture, qui doit passer par une PR explicite avec `!` et un ADR",
+      "Le job réussit, mais seulement si la PR est fusionnée en squash",
+    ],
+    correctIndex: 2,
+    explanation:
+      "oasdiff compare deux versions du contrat : champ requis ajouté, champ supprimé ou type changé sont des erreurs. Une rupture voulue reste possible, mais de façon explicite.",
     timeLimitMs: TIME_LIMIT_MS,
   },
 ]
